@@ -1,0 +1,41 @@
+{
+  "trailers": {
+    "https://img.youtube.com/vi/WpW36ldAqnM/maxresdefault.jpg": "/images/trailers/74dd6f96d810e23c0a925674d4264635.jpg",
+    "https://img.youtube.com/vi/-sAOWhvheK8/maxresdefault.jpg": "/images/trailers/4f5369d110ac4902997e95370a87486e.jpg",
+    "https://img.youtube.com/vi/1pHDWnXmK7Y/maxresdefault.jpg": "/images/trailers/c38e285954c2fc09852382b106238973.jpg",
+    "https://img.youtube.com/vi/umiKiW4En9g/maxresdefault.jpg": "/images/trailers/0dffc4e9b0421df95bdec9c5dccf88b4.jpg"
+  },
+  "casts": {
+    "https://image.tmdb.org/t/p/original/usWnHCzbADijULREZYSJ0qfM00y.jpg": "/images/casts/de55eb601bc6795267af9160f322d7e2.jpg",
+    "https://image.tmdb.org/t/p/original/snk6JiXOOoRjPtHU5VMoy6qbd32.jpg": "/images/casts/cc5cb5e0af1db1e5f20d02df682fb26a.jpg",
+    "https://image.tmdb.org/t/p/original/zmznPrQ9GSZwcOIUT0c3GyETwrP.jpg": "/images/casts/fa758c3f9918f4e629cdd98ec91e4b51.jpg",
+    "https://image.tmdb.org/t/p/original/nTSPtzWu6deZTJtWXHUpACVznY4.jpg": "/images/casts/7e6e790795dc6fecc3239f70833a185a.jpg",
+    "https://image.tmdb.org/t/p/original/mGAPQG2OKTgdKFkp9YpvCSqcbgY.jpg": "/images/casts/a67e625bf3b7968552e07b3fdd8af67d.jpg",
+    "https://image.tmdb.org/t/p/original/lJm89neuiVlYISEqNpGZA5kTAnP.jpg": "/images/casts/ba4afa5f4648a04cacb2726169510100.jpg",
+    "https://image.tmdb.org/t/p/original/hLN0Ca09KwQOFLZLPIEzgTIbqqg.jpg": "/images/casts/1bd37a6cca1276402aa2c85872902c00.jpg",
+    "https://image.tmdb.org/t/p/original/qY4W0zfGBYzlCyCC0QDJS1Muoa0.jpg": "/images/casts/a37149576de212bfcfdb8333b53b132f.jpg",
+    "https://image.tmdb.org/t/p/original/6Ksb8ANhhoWWGnlM6O1qrySd7e1.jpg": "/images/casts/2e278ae49f24c41f3121456895b8728d.jpg",
+    "https://image.tmdb.org/t/p/original/yhI4MK5atavKBD9wiJtaO1say1p.jpg": "/images/casts/2c5643f75b800b4b5d299047169e4d7a.jpg",
+    "https://image.tmdb.org/t/p/original/uPq4xUPiJIMW5rXF9AT0GrRqgJY.jpg": "/images/casts/17228d0d0e32591f35c4ade53a932cc9.jpg",
+    "https://image.tmdb.org/t/p/original/uZNtbPHowlBYo74U1qlTaRlrdiY.jpg": "/images/casts/6fa0ba26db56d3a85e50b62d45254755.jpg",
+    "https://image.tmdb.org/t/p/original/cbZrB8crWlLEDjVUoak8Liak6s.jpg": "/images/casts/254c4097e35d3d6979f96ce69fa3fe41.jpg"
+  },
+  "posters": {
+    "https://image.tmdb.org/t/p/original/dDlfjR7gllmr8HTeN6rfrYhTdwX.jpg": "/images/posters/0c37b4c4eee1dc37e70857b527096300.jpg",
+    "https://image.tmdb.org/t/p/original/juA4IWO52Fecx8lhAsxmDgy3M3.jpg": "/images/posters/b1a3c54c37c63dc78535de626689af46.jpg",
+    "https://image.tmdb.org/t/p/original/mKKqV23MQ0uakJS8OCE2TfV5jNS.jpg": "/images/posters/16d414ac3700f01d08a88c732c7057c9.jpg",
+    "https://image.tmdb.org/t/p/original/ubP2OsF3GlfqYPvXyLw9d78djGX.jpg": "/images/posters/2d0e9a17ec449262596e2758d6e694db.jpg",
+    "https://image.tmdb.org/t/p/original/yFHHfHcUgGAxziP1C3lLt0q2T4s.jpg": "/images/posters/d09d9be5eb2e7b556593aef707d39439.jpg",
+    "https://image.tmdb.org/t/p/original/z53D72EAOxGRqdr7KXXWp9dJiDe.jpg": "/images/posters/39727c0f450c05531c37c17c9c3db178.jpg",
+    "https://image.tmdb.org/t/p/original/m9EtP1Yrzv6v7dMaC9mRaGhd1um.jpg": "/images/posters/bc91bef317a97a46a8efd9f6ff17705a.jpg"
+  },
+  "backdrops": {
+    "https://image.tmdb.org/t/p/original/op3qmNhvwEvyT7UFyPbIfQmKriB.jpg": "/images/backdrops/4eacbb76e4c0f95135941cdd7079861c.jpg",
+    "https://image.tmdb.org/t/p/original/icFWIk1KfkWLZnugZAJEDauNZ94.jpg": "/images/backdrops/7bc1e0bed2e94e8fc5fe7e479e8c23fd.jpg",
+    "https://image.tmdb.org/t/p/original/7Zx3wDG5bBtcfk8lcnCWDOLM4Y4.jpg": "/images/backdrops/c5eef172910e2ec57600e68c6e620332.jpg",
+    "https://image.tmdb.org/t/p/original/65MVgDa6YjSdqzh7YOA04mYkioo.jpg": "/images/backdrops/c87c44a228930d906afb20e30ab5cb8d.jpg",
+    "https://image.tmdb.org/t/p/original/2Nti3gYAX513wvhp8IiLL6ZDyOm.jpg": "/images/backdrops/8fea7f114040cb1bff29d959eee2b57d.jpg",
+    "https://image.tmdb.org/t/p/original/1p5aI299YBnqrEEvVGJERk2MXXb.jpg": "/images/backdrops/bec315e51d9c5a5a4c7fee2303b4f7b8.jpg",
+    "https://image.tmdb.org/t/p/original/rthMuZfFv4fqEU4JVbgSW9wQ8rs.jpg": "/images/backdrops/2105c965bce9a394e2c589254bc2f251.jpg"
+  }
+}
