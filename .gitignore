@@ -7,7 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
 *.local
@@ -15,8 +18,10 @@ dist-ssr
 # Environment variables - DO NOT COMMIT
 .env
 .env.*
+!.env.example
 backend/.env
 backend/.env.*
+!backend/.env.example
 
 # Editor directories and files
 .vscode/*
@@ -31,3 +36,4 @@ backend/.env.*
 
 # Implementation plans (local only)
 implementation_plan.md
+restructuring_admin_template_plan.md
