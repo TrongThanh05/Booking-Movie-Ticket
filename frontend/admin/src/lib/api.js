@@ -1,39 +1,37 @@
-// =============================================
-// Base API instance — fetch wrapper
-// =============================================
-const API_BASE = "/api";
+/**
+ * api.js — Axios instance cho Admin Dashboard
+ * BaseURL = /api, auto-attach Authorization header
+ */
+import axios from 'axios';
 
-async function request(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+export const api = axios.create({
+  baseURL: '/api',
+  headers: { 'Content-Type': 'application/json' },
+});
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+// Request interceptor: gắn token vào header
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
-  // Attach JWT token if available
-  const token = localStorage.getItem("admin_token");
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(url, { ...options, headers });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(error.message || `Request failed: ${res.status}`);
-  }
-
-  return res.json();
-}
-
-export const api = {
-  get: (endpoint) => request(endpoint),
-  post: (endpoint, data) =>
-    request(endpoint, { method: "POST", body: JSON.stringify(data) }),
-  put: (endpoint, data) =>
-    request(endpoint, { method: "PUT", body: JSON.stringify(data) }),
-  delete: (endpoint) => request(endpoint, { method: "DELETE" }),
-};
+// Response interceptor: xử lý 401 → redirect login
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default api;

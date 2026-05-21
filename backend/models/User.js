@@ -8,6 +8,16 @@ const userSchema = new mongoose.Schema({
   phone: { type: String },
   avatar: { type: String },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
+  /**
+   * Chỉ tài khoản admin mới có theater_id.
+   * - admin: ObjectId trỏ tới Theater mà tài khoản đó quản lý.
+   * - user : null (mặc định).
+   */
+  theater_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Theater',
+    default: null,
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

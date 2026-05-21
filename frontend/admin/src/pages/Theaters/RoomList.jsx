@@ -1,58 +1,48 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router";
-import PageMeta from "../../components/common/PageMeta";
-import PageBreadCrumb from "../../components/common/PageBreadCrumb";
-import { roomApi } from "../../lib/roomApi";
-import Badge from "../../components/ui/badge/Badge";
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import PageMeta from '../../components/common/PageMeta';
+import PageBreadCrumb from '../../components/common/PageBreadCrumb';
+import Badge from '../../components/ui/badge/Badge';
+import Table from '../../components/ui/table/Table';
+import { api } from '../../lib/api';
 
-export default function RoomList() {
+const RoomList = () => {
   const { theaterId } = useParams();
   const [rooms, setRooms] = useState([]);
+  const [theater, setTheater] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    roomApi
-      .getAll(theaterId)
-      .then(setRooms)
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get(`/rooms?theater_id=${theaterId}`).then(r => setRooms(r.data?.rooms || r.data || [])).catch(() => setRooms([
+        { _id:'1', name:'Phòng 1', screen_type:'2D', capacity:120, status:'active' },
+        { _id:'2', name:'Phòng IMAX', screen_type:'IMAX', capacity:200, status:'active' },
+        { _id:'3', name:'Phòng 3', screen_type:'3D', capacity:80, status:'maintenance' },
+      ])),
+      api.get(`/theaters/${theaterId}`).then(r => setTheater(r.data)).catch(() => setTheater({ name: 'Rạp' })),
+    ]).finally(() => setLoading(false));
   }, [theaterId]);
 
-  return (
-    <>
-      <PageMeta title="Phòng chiếu | Admin" description="Danh sách phòng chiếu" />
-      <PageBreadCrumb pageTitle="Phòng chiếu" />
-      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="px-6 py-5">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Phòng chiếu ({rooms.length})</h3>
-        </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex justify-center py-10"><span className="text-gray-400">Đang tải...</span></div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-t border-gray-200 dark:border-gray-800">
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Tên phòng</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Loại màn hình</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Sức chứa</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Rạp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map((r) => (
-                  <tr key={r._id} className="border-t border-gray-100 dark:border-gray-800">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">{r.name}</td>
-                    <td className="px-6 py-4"><Badge variant="light" color="info">{r.screen_type}</Badge></td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{r.capacity} ghế</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{r.theater_id?.name || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
+  const statusMap = { active:{label:'Hoạt động',color:'success'}, maintenance:{label:'Bảo trì',color:'warning'}, inactive:{label:'Ngừng',color:'error'} };
+
+  return (<>
+    <PageMeta title={`Phòng chiếu | CineAdmin`}/>
+    <PageBreadCrumb pageTitle={`Phòng chiếu — ${theater?.name||''}`} items={[{label:'Cụm Rạp',path:'/admin/theaters'},{label:'Phòng chiếu'}]}/>
+    {loading ? <div className="h-40 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800"/> : (
+      <Table>
+        <Table.Head><tr><Table.Header>Tên phòng</Table.Header><Table.Header>Loại màn hình</Table.Header><Table.Header>Sức chứa</Table.Header><Table.Header>Trạng thái</Table.Header></tr></Table.Head>
+        <Table.Body>
+          {rooms.map(r => (
+            <Table.Row key={r._id}>
+              <Table.Cell><p className="font-semibold text-gray-800 dark:text-white/90">{r.name}</p></Table.Cell>
+              <Table.Cell><Badge variant="light" color="info" size="sm">{r.screen_type}</Badge></Table.Cell>
+              <Table.Cell>{r.capacity} ghế</Table.Cell>
+              <Table.Cell><Badge variant="light" color={statusMap[r.status]?.color||'light'} size="sm">{statusMap[r.status]?.label||r.status}</Badge></Table.Cell>
+            </Table.Row>
+          ))}
+        </Table.Body>
+      </Table>
+    )}
+  </>);
+};
+export default RoomList;

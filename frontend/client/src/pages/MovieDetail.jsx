@@ -46,7 +46,8 @@ const MovieDetail = () => {
 
         // Fetch all movies for related content
         const allMoviesResponse = await getMovies();
-        const related = allMoviesResponse.data
+        const allMoviesData = allMoviesResponse.data?.data || allMoviesResponse.data || [];
+        const related = allMoviesData
           .filter((m) => m._id !== id)
           .slice(0, 4);
         setRelatedMovies(related);

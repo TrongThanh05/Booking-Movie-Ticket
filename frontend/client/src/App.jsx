@@ -1,7 +1,7 @@
 /**
- * App.jsx — Client Router
- * SPA cho khách hàng: xem phim, đặt vé, quản lý booking
- * Admin dashboard là ứng dụng riêng tại frontend/admin/
+ * App.jsx — Unified Client + Admin Router
+ * - Client routes: /, /movies, /theaters, etc.
+ * - Admin routes: /admin/* (protected, requires admin role)
  */
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -24,6 +24,9 @@ import MyBooking from './pages/MyBooking';
 import Favorites from './pages/Favorite';
 import Releases from './pages/Releases';
 import Theaters from './pages/Theaters';
+
+// ── Admin Section (lazy load để giảm bundle size cho user thường) ─────────────
+import AdminSection from './admin/AdminSection';
 
 const App = () => {
   return (
@@ -60,6 +63,12 @@ const App = () => {
             element={<PrivateRoute><Favorites /></PrivateRoute>}
           />
         </Route>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            ADMIN ROUTES — /admin/* (protected, requires admin role)
+            Cùng port, cùng localStorage, cùng AuthContext!
+            ═══════════════════════════════════════════════════════════════════ */}
+        <Route path="/admin/*" element={<AdminSection />} />
 
         {/* ═══════════════════════════════════════════════════════════════════
             FALLBACK — 404

@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getShows, getTheaters } from '../lib/api';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -380,6 +380,7 @@ const MiniCalendar = ({ selectedDate, onSelect, onClose }) => {
 
 const Releases = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dateScrollRef = useRef(null);
 
   /** Scroll date bar by a fixed px amount */
@@ -407,7 +408,7 @@ const Releases = () => {
   // ── Fetch theaters ─────────────────────────────────────────────────────────
   useEffect(() => {
     getTheaters()
-      .then((r) => setTheaters(r.data))
+      .then((r) => setTheaters(r.data?.data || r.data || []))
       .catch(() => {})
       .finally(() => setLoadingTheaters(false));
   }, []);
@@ -417,7 +418,7 @@ const Releases = () => {
     setLoadingShows(true);
     setError(null);
     getShows()
-      .then((r) => setAllShows(r.data))
+      .then((r) => setAllShows(r.data?.data || r.data || []))
       .catch(() => setError('Không thể tải lịch chiếu. Vui lòng thử lại sau.'))
       .finally(() => setLoadingShows(false));
   }, []);
@@ -437,6 +438,18 @@ const Releases = () => {
     if (selectedTheater && !theatersInLocation.find((t) => t._id === selectedTheater))
       setSelectedTheater('');
   }, [theatersInLocation]);
+
+  // ── Pre-select theater from URL query param (e.g. from Theaters page) ─────
+  useEffect(() => {
+    const theaterId = searchParams.get('theater_id');
+    if (theaterId && theaters.length > 0) {
+      const found = theaters.find((t) => t._id === theaterId);
+      if (found) {
+        if (found.location) setSelectedLocation(found.location);
+        setSelectedTheater(theaterId);
+      }
+    }
+  }, [searchParams, theaters]);
 
   // ── Theater map ────────────────────────────────────────────────────────────
   const theaterMap = useMemo(() => {

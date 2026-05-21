@@ -18,10 +18,8 @@ dist-ssr
 # Environment variables - DO NOT COMMIT
 .env
 .env.*
-!.env.example
 backend/.env
 backend/.env.*
-!backend/.env.example
 
 # Editor directories and files
 .vscode/*
@@ -33,7 +31,3 @@ backend/.env.*
 *.njsproj
 *.sln
 *.sw?
-
-# Implementation plans (local only)
-implementation_plan.md
-restructuring_admin_template_plan.md

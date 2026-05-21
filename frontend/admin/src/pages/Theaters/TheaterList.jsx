@@ -1,75 +1,113 @@
-import { useState, useEffect } from "react";
-import PageMeta from "../../components/common/PageMeta";
-import PageBreadCrumb from "../../components/common/PageBreadCrumb";
-import { Link } from "react-router";
-import { theaterApi } from "../../lib/theaterApi";
+/**
+ * TheaterList.jsx — Quản lý Cụm Rạp (with pagination)
+ */
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import PageMeta from '../../components/common/PageMeta';
+import PageBreadCrumb from '../../components/common/PageBreadCrumb';
+import Badge from '../../components/ui/badge/Badge';
+import Button from '../../components/ui/button/Button';
+import Table from '../../components/ui/table/Table';
+import Pagination from '../../components/ui/pagination/Pagination';
+import { api } from '../../lib/api';
 
-export default function TheaterList() {
+const TheaterList = () => {
   const [theaters, setTheaters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState({
+    currentPage: 1, totalPages: 1, totalItems: 0, limit: 10,
+    hasNextPage: false, hasPrevPage: false,
+  });
+
+  const [searchDebounced, setSearchDebounced] = useState('');
   useEffect(() => {
-    theaterApi
-      .getAll()
-      .then(setTheaters)
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
+    const timer = setTimeout(() => { setSearchDebounced(search); setPage(1); }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const handleDelete = async (id) => {
-    if (!confirm("Xóa rạp này?")) return;
+  const fetchTheaters = useCallback(async () => {
+    setLoading(true);
     try {
-      await theaterApi.delete(id);
-      setTheaters((prev) => prev.filter((t) => t._id !== id));
-    } catch (err) {
-      alert("Lỗi: " + err.message);
+      const r = await api.get('/theaters', {
+        params: { page, limit, search: searchDebounced },
+      });
+      const res = r.data;
+      if (res.pagination) {
+        setTheaters(res.data);
+        setPagination(res.pagination);
+      } else {
+        setTheaters(Array.isArray(res) ? res : res.theaters || []);
+      }
+    } catch {
+      setTheaters([]);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [page, limit, searchDebounced]);
+
+  useEffect(() => { fetchTheaters(); }, [fetchTheaters]);
 
   return (
     <>
-      <PageMeta title="Quản lý Rạp | Admin" description="Danh sách rạp chiếu phim" />
-      <PageBreadCrumb pageTitle="Danh sách Rạp" />
-      <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="flex items-center justify-between px-6 py-5">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">Rạp ({theaters.length})</h3>
-          <Link to="/theaters/create" className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">+ Thêm Rạp</Link>
+      <PageMeta title="Cụm Rạp | CineAdmin" />
+      <PageBreadCrumb pageTitle="Quản lý Cụm Rạp" items={[{ label: 'Cụm Rạp' }]} />
+
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input
+              type="text" placeholder="Tìm kiếm rạp..." value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="h-10 w-full sm:w-64 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm
+                focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
+                dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
+            />
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{pagination.totalItems} cụm rạp</p>
         </div>
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex justify-center py-10"><span className="text-gray-400">Đang tải...</span></div>
-          ) : theaters.length === 0 ? (
-            <div className="flex justify-center py-10"><span className="text-gray-400">Chưa có rạp nào</span></div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-t border-gray-200 dark:border-gray-800">
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Tên rạp</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Địa chỉ</th>
-                  <th className="px-6 py-3 text-left text-sm font-medium text-gray-500">Khu vực</th>
-                  <th className="px-6 py-3 text-right text-sm font-medium text-gray-500">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {theaters.map((t) => (
-                  <tr key={t._id} className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800 dark:text-white/90">{t.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{t.address}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500">{t.location}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link to={`/theaters/${t._id}/rooms`} className="text-sm text-gray-500 hover:text-gray-700">Phòng chiếu</Link>
-                        <Link to={`/theaters/edit/${t._id}`} className="text-sm text-brand-500 hover:text-brand-600">Sửa</Link>
-                        <button onClick={() => handleDelete(t._id)} className="text-sm text-error-500 hover:text-error-600">Xóa</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <Link to="/admin/theaters/create"><Button><svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Thêm rạp</Button></Link>
       </div>
+
+      {loading ? <div className="space-y-3">{[1,2,3].map(i=><div key={i} className="h-16 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800"/>)}</div> : (
+        <Table>
+          <Table.Head><tr><Table.Header>Tên rạp</Table.Header><Table.Header>Khu vực</Table.Header><Table.Header>Địa chỉ</Table.Header><Table.Header>Phòng</Table.Header><Table.Header>SĐT</Table.Header><Table.Header className="text-right">Thao tác</Table.Header></tr></Table.Head>
+          <Table.Body>
+            {theaters.length === 0 ? (
+              <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-400 dark:text-gray-500">Không tìm thấy rạp nào</td></tr>
+            ) : theaters.map(t => (
+              <Table.Row key={t._id}>
+                <Table.Cell><p className="font-semibold text-gray-800 dark:text-white/90">{t.name}</p></Table.Cell>
+                <Table.Cell><Badge variant="light" color="info" size="sm">{t.location}</Badge></Table.Cell>
+                <Table.Cell><p className="truncate max-w-[200px]">{t.address}</p></Table.Cell>
+                <Table.Cell><span className="font-medium">{t.totalRooms}</span></Table.Cell>
+                <Table.Cell>{t.phone || '—'}</Table.Cell>
+                <Table.Cell>
+                  <div className="flex items-center justify-end gap-1">
+                    <Link to={`/admin/theaters/${t._id}/rooms`}><button className="rounded-lg p-2 text-gray-500 hover:bg-success-50 hover:text-success-500 transition-colors" title="Phòng chiếu"><svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></button></Link>
+                    <Link to={`/admin/theaters/edit/${t._id}`}><button className="rounded-lg p-2 text-gray-500 hover:bg-brand-50 hover:text-brand-500 transition-colors"><svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></Link>
+                  </div>
+                </Table.Cell>
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table>
+      )}
+
+      <Pagination
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        totalItems={pagination.totalItems}
+        limit={pagination.limit}
+        onPageChange={setPage}
+        onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+      />
     </>
   );
-}
+};
+
+export default TheaterList;

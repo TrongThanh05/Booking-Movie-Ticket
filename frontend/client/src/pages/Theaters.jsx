@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MapPin, Clock, Ticket, Loader2, Search, X } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
+import Pagination from '../components/Pagination';
 import { useNavigate } from 'react-router-dom';
-import { getTheaters, getShows } from '../lib/api';
+import api from '../lib/api';
 
 const Theaters = () => {
   const navigate = useNavigate();
@@ -10,47 +11,51 @@ const Theaters = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [theaters, setTheaters] = useState([]);
-  const [filteredTheaters, setFilteredTheaters] = useState([]);
-  const [shows, setShows] = useState([]);
 
-  // Fetch theaters and shows from API
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(8);
+  const [pagination, setPagination] = useState({
+    currentPage: 1, totalPages: 1, totalItems: 0, limit: 8,
+    hasNextPage: false, hasPrevPage: false,
+  });
+
+  // Debounce search
+  const [searchDebounced, setSearchDebounced] = useState('');
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const theatersResponse = await getTheaters();
-        const showsResponse = await getShows();
+    const timer = setTimeout(() => { setSearchDebounced(searchQuery); setPage(1); }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-        setTheaters(theatersResponse.data);
-        setShows(showsResponse.data);
-        setFilteredTheaters(theatersResponse.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Không thể tải dữ liệu rạp chiếu. Vui lòng thử lại sau.');
-      } finally {
-        setLoading(false);
+  const fetchTheaters = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/theaters', {
+        params: { page, limit, search: searchDebounced },
+      });
+
+      const res = response.data;
+      if (res.pagination) {
+        setTheaters(res.data);
+        setPagination(res.pagination);
+      } else {
+        // Backward compat
+        const arr = Array.isArray(res) ? res : [];
+        setTheaters(arr);
+        setPagination({ currentPage: 1, totalPages: 1, totalItems: arr.length, limit, hasNextPage: false, hasPrevPage: false });
       }
-    };
-
-    fetchData();
-  }, []);
-
-  // Filter theaters based on search query (by name or location)
-  useEffect(() => {
-    if (searchQuery) {
-      const result = theaters.filter(
-        (theater) =>
-          theater.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          theater.location.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
-      setFilteredTheaters(result);
-    } else {
-      setFilteredTheaters(theaters);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Không thể tải dữ liệu rạp chiếu. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
     }
-  }, [searchQuery, theaters]);
+  }, [page, limit, searchDebounced]);
 
-  if (loading) {
+  useEffect(() => { fetchTheaters(); }, [fetchTheaters]);
+
+  if (loading && page === 1 && theaters.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 px-4">
         <div className="max-w-7xl mx-auto">
@@ -91,7 +96,7 @@ const Theaters = () => {
           <div className="flex items-center justify-center gap-8 mt-8 text-sm">
             <div className="flex items-center gap-2 text-gray-300">
               <MapPin className="w-4 h-4 text-green-500" />
-              <span>{theaters.length} rạp</span>
+              <span>{pagination.totalItems} rạp</span>
             </div>
             <div className="flex items-center gap-2 text-gray-300">
               <Clock className="w-4 h-4 text-blue-500" />
@@ -123,11 +128,15 @@ const Theaters = () => {
         </div>
 
         {/* Theaters Grid */}
-        {filteredTheaters.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-            {filteredTheaters.map((theater) => (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
+          </div>
+        ) : theaters.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-4">
+            {theaters.map((theater) => (
               <div
-                key={theater.id}
+                key={theater._id || theater.id}
                 className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-4 shadow-md hover:shadow-lg transition-shadow duration-300"
               >
                 <img
@@ -165,7 +174,7 @@ const Theaters = () => {
                   </div>
                 )}
                 <button
-                  onClick={() => navigate(`/theaters/${theater.id}`)} // Hypothetical detail route
+                  onClick={() => navigate(`/releases?theater_id=${theater._id || theater.id}`)}
                   className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium text-sm shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
                 >
                   <Ticket className="w-4 h-4" /> Xem Lịch Chiếu
@@ -193,6 +202,18 @@ const Theaters = () => {
             </button>
           </div>
         )}
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          limit={pagination.limit}
+          onPageChange={(newPage) => {
+            setPage(newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       </div>
     </div>
   );

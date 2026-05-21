@@ -1,68 +1,73 @@
-import { createContext, useContext, useState, useEffect } from "react";
+/**
+ * SidebarContext.jsx — Sidebar collapse/expand state
+ * Responsive: auto-collapse trên mobile, overlay mode
+ */
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
-const SidebarContext = createContext(undefined);
-
-export const useSidebar = () => {
-  const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider");
-  }
-  return context;
-};
+const SidebarContext = createContext(null);
 
 export const SidebarProvider = ({ children }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [activeItem, setActiveItem] = useState(null);
-  const [openSubmenu, setOpenSubmenu] = useState(null);
+  const previousWidth = useRef(window.innerWidth);
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (!mobile) {
+      const w = window.innerWidth;
+      const wasMobile = previousWidth.current < 1024;
+      const nowMobile = w < 1024;
+
+      if (!wasMobile && nowMobile) {
+        setIsMobileOpen(false);
+        setIsExpanded(false);
+      }
+      if (wasMobile && !nowMobile) {
+        setIsExpanded(true);
         setIsMobileOpen(false);
       }
+      setIsMobile(nowMobile);
+      previousWidth.current = w;
     };
 
     handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const toggleSidebar = () => {
-    setIsExpanded((prev) => !prev);
-  };
+  const toggleSidebar = useCallback(() => {
+    if (isMobile) {
+      setIsMobileOpen(prev => !prev);
+    } else {
+      setIsExpanded(prev => !prev);
+    }
+  }, [isMobile]);
 
-  const toggleMobileSidebar = () => {
-    setIsMobileOpen((prev) => !prev);
-  };
-
-  const toggleSubmenu = (item) => {
-    setOpenSubmenu((prev) => (prev === item ? null : item));
-  };
+  const toggleMobileSidebar = useCallback(() => {
+    setIsMobileOpen(prev => !prev);
+  }, []);
 
   return (
     <SidebarContext.Provider
       value={{
-        isExpanded: isMobile ? false : isExpanded,
+        isExpanded,
         isMobileOpen,
-        isHovered,
-        activeItem,
-        openSubmenu,
+        isMobile,
         toggleSidebar,
         toggleMobileSidebar,
-        setIsHovered,
-        setActiveItem,
-        toggleSubmenu,
+        setIsExpanded,
+        setIsMobileOpen,
       }}
     >
       {children}
     </SidebarContext.Provider>
   );
 };
+
+export const useSidebar = () => {
+  const ctx = useContext(SidebarContext);
+  if (!ctx) throw new Error('useSidebar must be used inside <SidebarProvider>');
+  return ctx;
+};
+
+export default SidebarContext;

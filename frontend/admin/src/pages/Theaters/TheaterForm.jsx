@@ -1,56 +1,50 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
-import PageMeta from "../../components/common/PageMeta";
-import PageBreadCrumb from "../../components/common/PageBreadCrumb";
-import { theaterApi } from "../../lib/theaterApi";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import PageMeta from '../../components/common/PageMeta';
+import PageBreadCrumb from '../../components/common/PageBreadCrumb';
+import Button from '../../components/ui/button/Button';
+import InputField from '../../components/ui/input/InputField';
+import { api } from '../../lib/api';
 
-export default function TheaterForm() {
+const TheaterForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-  const [form, setForm] = useState({ name: "", address: "", location: "" });
   const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ name:'', location:'', address:'', phone:'', email:'', totalRooms:1 });
 
   useEffect(() => {
-    if (isEdit) {
-      theaterApi.getById(id).then((t) => setForm({ name: t.name || "", address: t.address || "", location: t.location || "" }));
-    }
+    if (isEdit) api.get(`/theaters/${id}`).then(r => { const t=r.data; setForm({ name:t.name||'', location:t.location||'', address:t.address||'', phone:t.phone||'', email:t.email||'', totalRooms:t.totalRooms||1 }); }).catch(console.error);
   }, [id, isEdit]);
 
+  const handleChange = (f) => (e) => setForm(p => ({ ...p, [f]: e.target.value }));
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      isEdit ? await theaterApi.update(id, form) : await theaterApi.create(form);
-      navigate("/theaters");
-    } catch (err) { alert("Lỗi: " + err.message); }
-    finally { setLoading(false); }
+    e.preventDefault(); setLoading(true);
+    try { if(isEdit) await api.put(`/theaters/${id}`,form); else await api.post('/theaters',form); navigate('/admin/theaters'); }
+    catch(err){console.error(err)} finally{setLoading(false)}
   };
 
-  return (
-    <>
-      <PageMeta title={`${isEdit ? "Sửa" : "Thêm"} Rạp | Admin`} description="Form quản lý rạp" />
-      <PageBreadCrumb pageTitle={isEdit ? "Sửa Rạp" : "Thêm Rạp Mới"} />
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-        <form onSubmit={handleSubmit} className="space-y-5 max-w-lg">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Tên rạp *</label>
-            <input name="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Địa chỉ</label>
-            <input name="address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Khu vực</label>
-            <input name="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white" />
-          </div>
-          <div className="flex gap-3">
-            <button type="submit" disabled={loading} className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">{loading ? "Đang lưu..." : isEdit ? "Cập nhật" : "Tạo Rạp"}</button>
-            <button type="button" onClick={() => navigate("/theaters")} className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300">Hủy</button>
-          </div>
-        </form>
-      </div>
-    </>
-  );
-}
+  return (<>
+    <PageMeta title={`${isEdit?'Sửa':'Thêm'} Rạp | CineAdmin`}/>
+    <PageBreadCrumb pageTitle={isEdit?'Sửa rạp':'Thêm rạp mới'} items={[{label:'Cụm Rạp',path:'/admin/theaters'},{label:isEdit?'Sửa':'Thêm mới'}]}/>
+    <div className="mx-auto max-w-2xl">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 space-y-5">
+        <InputField label="Tên rạp" id="name" value={form.name} onChange={handleChange('name')} required/>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <InputField label="Khu vực" id="location" value={form.location} onChange={handleChange('location')} required/>
+          <InputField label="Số phòng" id="rooms" type="number" value={form.totalRooms} onChange={handleChange('totalRooms')}/>
+        </div>
+        <InputField label="Địa chỉ" id="address" value={form.address} onChange={handleChange('address')} required/>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <InputField label="Số điện thoại" id="phone" value={form.phone} onChange={handleChange('phone')}/>
+          <InputField label="Email" id="email" type="email" value={form.email} onChange={handleChange('email')}/>
+        </div>
+        <div className="flex justify-end gap-3 pt-2">
+          <Button variant="secondary" onClick={()=>navigate('/admin/theaters')}>Huỷ</Button>
+          <Button type="submit" disabled={loading}>{loading?'Đang lưu...':isEdit?'Cập nhật':'Thêm rạp'}</Button>
+        </div>
+      </form>
+    </div>
+  </>);
+};
+export default TheaterForm;

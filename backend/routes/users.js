@@ -1,23 +1,59 @@
 import express from 'express';
 import User    from '../models/User.js';
+import Theater from '../models/Theater.js';
 import jwt     from 'jsonwebtoken';
+import authMiddleware, { adminMiddleware, requireSuperAdmin } from '../middleware/auth.js';
+import { paginate } from '../utils/paginate.js';
 
 const router = express.Router();
 
-const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '7d' });
+/**
+ * Sinh JWT token.
+ * Payload chứa: id, role, theater_id (nếu có).
+ * Middleware auth có thể decode nhanh mà không cần query DB lần 2.
+ */
+const generateToken = (user) =>
+  jwt.sign(
+    {
+      id:         user._id,
+      role:       user.role,
+      theater_id: user.theater_id || null,
+    },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '7d' },
+  );
 
 /** Trường public trả về (không bao gồm password) */
 const publicFields = (user) => ({
-  _id:    user._id,
-  name:   user.name,
-  email:  user.email,
-  phone:  user.phone  || '',
-  role:   user.role,
-  avatar: user.avatar || '',
+  _id:        user._id,
+  name:       user.name,
+  email:      user.email,
+  phone:      user.phone      || '',
+  role:       user.role,
+  avatar:     user.avatar     || '',
+  /**
+   * theater_id: ObjectId (hoặc null).
+   * Frontend dùng để xác định admin đang quản lý rạp nào
+   * và điều hướng vào đúng trang admin-theater.
+   */
+  theater_id: user.theater_id || null,
 });
 
-// ── POST /api/users/register ───────────────────────────────────────────────────
+// ── GET /api/users — Danh sách tất cả user (admin, có phân trang) ────────────
+router.get('/', adminMiddleware, async (req, res) => {
+  try {
+    const result = await paginate(User, {}, req.query, {
+      defaultSort: { createdAt: -1 },
+      searchFields: ['name', 'email', 'phone'],
+      select: '-password',
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ── POST /api/users/register ────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   const { name, email, password, phone } = req.body;
 
@@ -31,11 +67,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Email này đã được đăng ký' });
     }
 
-    // role mặc định 'user' theo schema
+    // role mặc định 'user', theater_id mặc định null theo schema
     const user = new User({ name, email, password, phone: phone || '' });
     await user.save();
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     res.status(201).json({
       message: 'Đăng ký thành công',
       user:    publicFields(user),
@@ -46,7 +82,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// ── POST /api/users/login ──────────────────────────────────────────────────────
+// ── POST /api/users/login ────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -65,10 +101,16 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Email hoặc mật khẩu không đúng' });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     res.json({
       message: 'Đăng nhập thành công',
-      user:    publicFields(user), // bao gồm role để frontend redirect đúng
+      /**
+       * publicFields bao gồm:
+       *   - role       → frontend redirect sang /admin hoặc /
+       *   - theater_id → nếu là admin, frontend biết chính xác rạp nào
+       *                  để chỉ hiển thị trang quản lý của rạp đó
+       */
+      user:  publicFields(user),
       token,
     });
   } catch (error) {
@@ -76,10 +118,13 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ── GET /api/users/profile/:id ────────────────────────────────────────────────
-router.get('/profile/:id', async (req, res) => {
+// ── GET /api/users/profile/:id ───────────────────────────────────────────────
+router.get('/profile/:id', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id)
+      .select('-password')
+      .populate('theater_id', 'name location address'); // populate thông tin rạp nếu có
+
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {
@@ -87,14 +132,95 @@ router.get('/profile/:id', async (req, res) => {
   }
 });
 
-// ── PUT /api/users/:id ────────────────────────────────────────────────────────
-router.put('/:id', async (req, res) => {
+// ── PUT /api/users/:id ───────────────────────────────────────────────────────
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    // Không cho phép update password qua route này
-    const { password, role, ...updateData } = req.body;
+    // Không cho phép tự update password/role/theater_id qua route này
+    const { password, role, theater_id, ...updateData } = req.body;
     const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// ── PUT /api/users/:id/assign-theater ───────────────────────────────────────
+/**
+ * Gán rạp chiếu phim cho một tài khoản admin.
+ * Chỉ super-admin (admin chưa bị ràng buộc rạp) mới nên gọi API này.
+ *
+ * Body: { theater_id: "<ObjectId>" }
+ *
+ * Quy tắc:
+ *   - Tài khoản được gán PHẢI có role = 'admin'.
+ *   - theater_id phải tồn tại trong collection theaters.
+ *   - Mỗi theater chỉ được gán cho 1 admin (ràng buộc 1-1).
+ */
+router.put('/:id/assign-theater', adminMiddleware, requireSuperAdmin, async (req, res) => {
+  const { theater_id } = req.body;
+
+  if (!theater_id) {
+    return res.status(400).json({ message: 'theater_id là bắt buộc' });
+  }
+
+  try {
+    // Kiểm tra target user tồn tại và có role admin
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    }
+    if (targetUser.role !== 'admin') {
+      return res.status(400).json({ message: 'Chỉ tài khoản admin mới có thể được gán rạp' });
+    }
+
+    // Kiểm tra theater tồn tại
+    const theater = await Theater.findById(theater_id);
+    if (!theater) {
+      return res.status(404).json({ message: 'Không tìm thấy rạp chiếu phim' });
+    }
+
+    // Kiểm tra theater này đã được gán cho admin khác chưa
+    const alreadyAssigned = await User.findOne({
+      theater_id,
+      _id: { $ne: req.params.id },
+    });
+    if (alreadyAssigned) {
+      return res.status(409).json({
+        message: `Rạp "${theater.name}" đã được gán cho tài khoản admin khác`,
+      });
+    }
+
+    targetUser.theater_id = theater_id;
+    await targetUser.save();
+
+    res.json({
+      message: `Đã gán rạp "${theater.name}" cho tài khoản ${targetUser.email}`,
+      user: publicFields(targetUser),
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// ── DELETE /api/users/:id/assign-theater ─────────────────────────────────────
+/**
+ * Huỷ gán rạp khỏi tài khoản admin (đặt theater_id về null).
+ */
+router.delete('/:id/assign-theater', adminMiddleware, requireSuperAdmin, async (req, res) => {
+  try {
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    }
+
+    targetUser.theater_id = null;
+    await targetUser.save();
+
+    res.json({
+      message: 'Đã huỷ gán rạp khỏi tài khoản',
+      user: publicFields(targetUser),
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

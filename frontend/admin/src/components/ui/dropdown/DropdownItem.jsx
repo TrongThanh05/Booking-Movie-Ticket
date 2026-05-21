@@ -1,35 +1,23 @@
-import { Link } from "react-router";
-
+/**
+ * DropdownItem.jsx — Individual dropdown menu item
+ */
 export const DropdownItem = ({
-  tag = "button",
-  to,
-  onClick,
-  onItemClick,
-  baseClassName = "block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900",
-  className = "",
   children,
-}) => {
-  const combinedClasses = `${baseClassName} ${className}`.trim();
+  onClick,
+  className = '',
+  danger = false,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+      ${danger
+        ? 'text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10'
+        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5'
+      } ${className}`}
+  >
+    {children}
+  </button>
+);
 
-  const handleClick = (event) => {
-    if (tag === "button") {
-      event.preventDefault();
-    }
-    if (onClick) onClick();
-    if (onItemClick) onItemClick();
-  };
-
-  if (tag === "a" && to) {
-    return (
-      <Link to={to} className={combinedClasses} onClick={handleClick}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <button onClick={handleClick} className={combinedClasses}>
-      {children}
-    </button>
-  );
-};
+export default DropdownItem;

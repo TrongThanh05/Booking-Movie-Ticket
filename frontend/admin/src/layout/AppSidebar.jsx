@@ -1,348 +1,148 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
-
+/**
+ * AppSidebar.jsx — Navigation sidebar (collapsible)
+ *
+ * Menu groups tương ứng 8 mục quản trị:
+ *   📊 Dashboard, 🎬 Phim, 🏢 Rạp/Phòng, 📅 Lịch chiếu
+ *   🎟️ Đơn hàng, 👥 Khách hàng, 🎁 Khuyến mãi, ⚙️ Cài đặt
+ */
+import { useCallback, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useSidebar } from '../context/SidebarContext';
 import {
+  GridIcon,
+  VideoIcon,
   BoxCubeIcon,
   CalenderIcon,
-  ChevronDownIcon,
-  GridIcon,
-  HorizontaLDots,
   ListIcon,
   GroupIcon,
   DollarLineIcon,
-  VideoIcon,
-} from "../icons";
-import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
+  PlugInIcon,
+} from '../icons';
 
-// =============================================
-// Navigation items cho hệ thống đặt vé xem phim
-// =============================================
-const navItems = [
+// ── Menu Configuration ────────────────────────────────────────────────────────
+const menuSections = [
   {
-    icon: <GridIcon />,
-    name: "Dashboard",
-    path: "/",
-  },
-  {
-    icon: <VideoIcon />,
-    name: "Quản lý Phim",
-    subItems: [
-      { name: "Danh sách Phim", path: "/movies" },
-      { name: "Thêm Phim", path: "/movies/create" },
+    title: 'QUẢN LÝ CHÍNH',
+    items: [
+      { label: 'Dashboard',    icon: GridIcon,    path: '/admin' },
+      { label: 'Quản lý Phim', icon: VideoIcon,   path: '/admin/movies' },
+      { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon, path: '/admin/theaters' },
+      { label: 'Lịch Chiếu',   icon: CalenderIcon, path: '/admin/shows' },
     ],
   },
   {
-    icon: <BoxCubeIcon />,
-    name: "Rạp & Phòng chiếu",
-    subItems: [
-      { name: "Danh sách Rạp", path: "/theaters" },
-      { name: "Thêm Rạp", path: "/theaters/create" },
+    title: 'VẬN HÀNH',
+    items: [
+      { label: 'Đơn hàng / Vé', icon: ListIcon, path: '/admin/bookings' },
+      { label: 'Khách hàng',   icon: GroupIcon,    path: '/admin/users' },
+      { label: 'Khuyến mãi',   icon: DollarLineIcon, path: '/admin/vouchers' },
     ],
   },
   {
-    icon: <CalenderIcon />,
-    name: "Lịch chiếu",
-    subItems: [
-      { name: "Danh sách Suất chiếu", path: "/shows" },
-      { name: "Tạo Suất chiếu", path: "/shows/create" },
+    title: 'KHÁC',
+    items: [
+      { label: 'Cài đặt', icon: PlugInIcon, path: '/admin/settings' },
     ],
-  },
-];
-
-const othersItems = [
-  {
-    icon: <GroupIcon />,
-    name: "Khách hàng",
-    path: "/users",
-  },
-  {
-    icon: <DollarLineIcon />,
-    name: "Vouchers",
-    subItems: [
-      { name: "Danh sách Voucher", path: "/vouchers" },
-      { name: "Tạo Voucher", path: "/vouchers/create" },
-    ],
-  },
-  {
-    icon: <ListIcon />,
-    name: "Đơn đặt vé",
-    path: "/bookings",
   },
 ];
 
 const AppSidebar = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isMobile, setIsMobileOpen } = useSidebar();
   const location = useLocation();
+  const sidebarRef = useRef(null);
 
-  const [openSubmenu, setOpenSubmenu] = useState(null);
-  const [subMenuHeight, setSubMenuHeight] = useState({});
-  const subMenuRefs = useRef({});
+  // Đóng mobile sidebar khi navigate
+  useEffect(() => {
+    if (isMobile) setIsMobileOpen(false);
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Kiểm tra active state
   const isActive = useCallback(
-    (path) => location.pathname === path,
-    [location.pathname]
+    (path) => {
+      if (path === '/admin') return location.pathname === '/admin';
+      return location.pathname.startsWith(path);
+    },
+    [location.pathname],
   );
 
-  useEffect(() => {
-    let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType,
-                index,
-              });
-              submenuMatched = true;
-            }
-          });
-        }
-      });
-    });
-
-    if (!submenuMatched) {
-      setOpenSubmenu(null);
-    }
-  }, [location, isActive]);
-
-  useEffect(() => {
-    if (openSubmenu !== null) {
-      const key = `${openSubmenu.type}-${openSubmenu.index}`;
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0,
-        }));
-      }
-    }
-  }, [openSubmenu]);
-
-  const handleSubmenuToggle = (index, menuType) => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null;
-      }
-      return { type: menuType, index };
-    });
-  };
-
-  const renderMenuItems = (items, menuType) => (
-    <ul className="flex flex-col gap-4">
-      {items.map((nav, index) => (
-        <li key={nav.name}>
-          {nav.subItems ? (
-            <button
-              onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`menu-item group ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-              }`}
-            >
-              <span
-                className={`menu-item-icon-size  ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
-              >
-                {nav.icon}
-              </span>
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <span className="menu-item-text">{nav.name}</span>
-              )}
-              {(isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={`ml-auto w-5 h-5 transition-transform duration-200 ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }`}
-                />
-              )}
-            </button>
-          ) : (
-            nav.path && (
-              <Link
-                to={nav.path}
-                className={`menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }`}
-              >
-                <span
-                  className={`menu-item-icon-size ${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }`}
-                >
-                  {nav.icon}
-                </span>
-                {(isExpanded || isHovered || isMobileOpen) && (
-                  <span className="menu-item-text">{nav.name}</span>
-                )}
-              </Link>
-            )
-          )}
-          {nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-            <div
-              ref={(el) => {
-                subMenuRefs.current[`${menuType}-${index}`] = el;
-              }}
-              className="overflow-hidden transition-all duration-300"
-              style={{
-                height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${subMenuHeight[`${menuType}-${index}`]}px`
-                    : "0px",
-              }}
-            >
-              <ul className="mt-2 space-y-1 ml-9">
-                {nav.subItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link
-                      to={subItem.path}
-                      className={`menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }`}
-                    >
-                      {subItem.name}
-                      <span className="flex items-center gap-1 ml-auto">
-                        {subItem.new && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
-                            new
-                          </span>
-                        )}
-                        {subItem.pro && (
-                          <span
-                            className={`ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge`}
-                          >
-                            pro
-                          </span>
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+  // Sidebar visibility & width
+  const sidebarClasses = isMobile
+    ? `fixed top-0 left-0 z-999 h-full w-[280px] transition-transform duration-300 ease-in-out ${
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+      }`
+    : `fixed top-0 left-0 z-99 h-full transition-all duration-300 ease-in-out ${
+        isExpanded ? 'w-[280px]' : 'w-[90px]'
+      }`;
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-          isExpanded || isMobileOpen
-            ? "w-[290px]"
-            : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
-        }
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-        lg:translate-x-0`}
-      onMouseEnter={() => !isExpanded && setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      ref={sidebarRef}
+      className={`${sidebarClasses} flex flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900`}
     >
-      <div
-        className={`py-8 flex ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
-      >
-        <Link to="/">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <img
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <img
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-            </>
-          ) : (
-            <img
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
-          )}
-        </Link>
-      </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
-              </h2>
-              {renderMenuItems(navItems, "main")}
-            </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
+      {/* ── Logo ──────────────────────────────────────────────────────────────── */}
+      <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 dark:border-gray-800">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white font-bold text-sm">
+          🎬
+        </div>
+        {(isExpanded || isMobileOpen) && (
+          <div className="overflow-hidden">
+            <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
+              CineAdmin
+            </h1>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">Quản trị rạp phim</p>
           </div>
-        </nav>
-        {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}
+        )}
       </div>
+
+      {/* ── Navigation Menu ───────────────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto custom-scrollbar py-4 px-3">
+        {menuSections.map((section, sIdx) => (
+          <div key={sIdx} className="mb-6">
+            {/* Section Title */}
+            {(isExpanded || isMobileOpen) && (
+              <h4 className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                {section.title}
+              </h4>
+            )}
+            {!isExpanded && !isMobileOpen && sIdx > 0 && (
+              <div className="mx-auto mb-3 h-px w-8 bg-gray-200 dark:bg-gray-800" />
+            )}
+
+            {/* Menu Items */}
+            <ul className="space-y-1">
+              {section.items.map((item) => {
+                const active = isActive(item.path);
+                return (
+                  <li key={item.path} className="group">
+                    <Link
+                      to={item.path}
+                      className={`menu-item ${active ? 'menu-item-active' : 'menu-item-inactive'}
+                        ${!isExpanded && !isMobileOpen ? 'justify-center px-0' : ''}`}
+                      title={!isExpanded && !isMobileOpen ? item.label : undefined}
+                    >
+                      <span className={`menu-item-icon-size ${active ? 'menu-item-icon-active' : 'menu-item-icon-inactive'}`}>
+                        <item.icon />
+                      </span>
+                      {(isExpanded || isMobileOpen) && (
+                        <span className="truncate">{item.label}</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+
+      {/* ── Footer ────────────────────────────────────────────────────────────── */}
+      {(isExpanded || isMobileOpen) && (
+        <div className="border-t border-gray-200 px-5 py-3 dark:border-gray-800">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center">
+            © 2025 CineAdmin v1.0
+          </p>
+        </div>
+      )}
     </aside>
   );
 };

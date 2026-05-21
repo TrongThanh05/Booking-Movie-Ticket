@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import MovieCard from '../components/MovieCard';
+import Pagination from '../components/Pagination';
 import {
   Search,
   Filter,
@@ -15,7 +16,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
-import { getMovies } from '../lib/api';
+import api from '../lib/api';
 
 const Movies = () => {
   const [movies, setMovies] = useState([]);
@@ -26,70 +27,72 @@ const Movies = () => {
   const [sortBy, setSortBy] = useState('latest');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [filteredMovies, setFilteredMovies] = useState([]);
 
-  // Fetch movies from API
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(8);
+  const [pagination, setPagination] = useState({
+    currentPage: 1, totalPages: 1, totalItems: 0, limit: 8,
+    hasNextPage: false, hasPrevPage: false,
+  });
+
+  // Debounce search
+  const [searchDebounced, setSearchDebounced] = useState('');
   useEffect(() => {
-    const fetchMovies = async () => {
-      try {
-        setLoading(true);
-        const response = await getMovies();
-        setMovies(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching movies:', err);
-        setError('Không thể tải dữ liệu phim. Vui lòng thử lại sau.');
-      } finally {
-        setLoading(false);
+    const timer = setTimeout(() => { setSearchDebounced(searchQuery); setPage(1); }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page on sort/genre change
+  useEffect(() => { setPage(1); }, [selectedGenre, sortBy]);
+
+  // Fetch movies from API with pagination
+  const fetchMovies = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Map sort option to API params
+      let sort = 'createdAt';
+      let order = 'desc';
+      if (sortBy === 'title')  { sort = 'title'; order = 'asc'; }
+      if (sortBy === 'rating') { sort = 'vote_average'; order = 'desc'; }
+
+      const response = await api.get('/movies', {
+        params: { page, limit, search: searchDebounced, sort, order },
+      });
+
+      const res = response.data;
+      if (res.pagination) {
+        setMovies(res.data);
+        setPagination(res.pagination);
+      } else {
+        // Backward compat
+        const arr = Array.isArray(res) ? res : [];
+        setMovies(arr);
+        setPagination({ currentPage: 1, totalPages: 1, totalItems: arr.length, limit, hasNextPage: false, hasPrevPage: false });
       }
-    };
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching movies:', err);
+      setError('Không thể tải dữ liệu phim. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, searchDebounced, sortBy]);
 
-    fetchMovies();
-  }, []);
+  useEffect(() => { fetchMovies(); }, [fetchMovies]);
 
-  // Filter and search movies
-  useEffect(() => {
-    let result = [...movies];
-
-    // Search filter
-    if (searchQuery) {
-      result = result.filter(
-        (movie) =>
-          movie.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          movie.genre?.toLowerCase().includes(searchQuery.toLowerCase()),
+  // Client-side genre filter (genres aren't searchable server-side easily)
+  const filteredMovies = selectedGenre === 'all'
+    ? movies
+    : movies.filter((movie) =>
+        movie.genres?.some((g) => g.name?.toLowerCase().includes(selectedGenre.toLowerCase())),
       );
-    }
 
-    // Genre filter
-    if (selectedGenre !== 'all') {
-      result = result.filter((movie) =>
-        movie.genre?.toLowerCase().includes(selectedGenre.toLowerCase()),
-      );
-    }
-
-    // Sort movies
-    switch (sortBy) {
-      case 'title':
-        result.sort((a, b) => a.title?.localeCompare(b.title));
-        break;
-      case 'rating':
-        result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
-      case 'latest':
-      default:
-        result.sort(
-          (a, b) => new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0),
-        );
-        break;
-    }
-
-    setFilteredMovies(result);
-  }, [movies, searchQuery, selectedGenre, sortBy]);
-
-  // Get unique genres
+  // Get unique genres from current page results + all loaded data
   const genres = [
     'all',
-    ...new Set(movies.map((movie) => movie.genre).filter(Boolean)),
+    ...new Set(movies.flatMap((movie) => movie.genres?.map((g) => g.name) || []).filter(Boolean)),
   ];
 
   const sortOptions = [
@@ -104,7 +107,7 @@ const Movies = () => {
     setSortBy('latest');
   };
 
-  if (loading) {
+  if (loading && page === 1) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 px-4">
         <div className="max-w-7xl mx-auto">
@@ -147,7 +150,7 @@ const Movies = () => {
           <div className="flex items-center justify-center gap-8 mt-8 text-sm">
             <div className="flex items-center gap-2 text-gray-300">
               <Star className="w-4 h-4 text-yellow-500" />
-              <span>{movies.length} bộ phim</span>
+              <span>{pagination.totalItems} bộ phim</span>
             </div>
             <div className="flex items-center gap-2 text-gray-300">
               <Clock className="w-4 h-4 text-blue-500" />
@@ -303,20 +306,24 @@ const Movies = () => {
                 : 'Tất cả phim'}
             </h2>
             <p className="text-gray-400">
-              Tìm thấy {filteredMovies.length} bộ phim
+              Tìm thấy {pagination.totalItems} bộ phim
               {selectedGenre !== 'all' && ` trong thể loại ${selectedGenre}`}
             </p>
           </div>
         </div>
 
         {/* Movies Grid/List */}
-        {filteredMovies.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
+          </div>
+        ) : filteredMovies.length > 0 ? (
           <div
             className={`${
               viewMode === 'grid'
                 ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
                 : 'flex flex-col gap-4'
-            } mb-12`}
+            } mb-4`}
           >
             {filteredMovies.map((movie) => (
               <div
@@ -352,14 +359,17 @@ const Movies = () => {
           </div>
         )}
 
-        {/* Load More Button (if needed) */}
-        {filteredMovies.length > 12 && (
-          <div className="text-center">
-            <button className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full transition-all duration-300 hover:scale-105">
-              Xem thêm phim
-            </button>
-          </div>
-        )}
+        {/* Pagination */}
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          limit={pagination.limit}
+          onPageChange={(newPage) => {
+            setPage(newPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       </div>
     </div>
   );

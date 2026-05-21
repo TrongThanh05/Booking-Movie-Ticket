@@ -1,38 +1,37 @@
-import { useEffect, useRef } from "react";
+/**
+ * Dropdown.jsx — Generic dropdown container
+ * Used by NotificationDropdown, UserDropdown, etc.
+ */
+import { useRef, useEffect } from 'react';
 
-export const Dropdown = ({
-  isOpen,
-  onClose,
-  children,
-  className = "",
-}) => {
-  const dropdownRef = useRef(null);
+export const Dropdown = ({ isOpen, onClose, children, className = '', align = 'right' }) => {
+  const ref = useRef(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        !event.target.closest(".dropdown-toggle")
-      ) {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
         onClose();
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [onClose]);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
+  const alignClass = align === 'right' ? 'right-0' : 'left-0';
+
   return (
     <div
-      ref={dropdownRef}
-      className={`absolute z-40  right-0 mt-2  rounded-xl border border-gray-200 bg-white  shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark ${className}`}
+      ref={ref}
+      className={`absolute ${alignClass} z-99 mt-2 rounded-xl border border-gray-200 bg-white shadow-theme-lg
+        dark:border-gray-800 dark:bg-gray-900 ${className}`}
     >
       {children}
     </div>
   );
 };
+
+export default Dropdown;

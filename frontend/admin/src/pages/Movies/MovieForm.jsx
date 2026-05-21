@@ -1,202 +1,83 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
-import PageMeta from "../../components/common/PageMeta";
-import PageBreadCrumb from "../../components/common/PageBreadCrumb";
-import { movieApi } from "../../lib/movieApi";
+/**
+ * MovieForm.jsx — Form thêm/sửa phim
+ */
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import PageMeta from '../../components/common/PageMeta';
+import PageBreadCrumb from '../../components/common/PageBreadCrumb';
+import Button from '../../components/ui/button/Button';
+import InputField from '../../components/ui/input/InputField';
+import { api } from '../../lib/api';
 
-export default function MovieForm() {
+const MovieForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-
-  const [form, setForm] = useState({
-    title: "",
-    genre: "",
-    runtime: "",
-    release_date: "",
-    overview: "",
-    poster_path: "",
-    backdrop_path: "",
-    trailer_url: "",
-    status: "coming_soon",
-  });
   const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    title: '', overview: '', poster_path: '', backdrop_path: '',
+    release_date: '', runtime: '', vote_average: '', original_language: 'vi',
+    trailer_url: '', tagline: '',
+  });
 
   useEffect(() => {
     if (isEdit) {
-      movieApi.getById(id).then((movie) =>
+      api.get(`/movies/${id}`).then(r => {
+        const m = r.data;
         setForm({
-          title: movie.title || "",
-          genre: movie.genre?.join(", ") || "",
-          runtime: movie.runtime || "",
-          release_date: movie.release_date?.split("T")[0] || "",
-          overview: movie.overview || "",
-          poster_path: movie.poster_path || "",
-          backdrop_path: movie.backdrop_path || "",
-          trailer_url: movie.trailer_url || "",
-          status: movie.status || "coming_soon",
-        })
-      );
+          title: m.title || '', overview: m.overview || '', poster_path: m.poster_path || '',
+          backdrop_path: m.backdrop_path || '', release_date: m.release_date?.split('T')[0] || '',
+          runtime: m.runtime || '', vote_average: m.vote_average || '', original_language: m.original_language || 'vi',
+          trailer_url: m.trailer_url || '', tagline: m.tagline || '',
+        });
+      }).catch(console.error);
     }
   }, [id, isEdit]);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (field) => (e) => setForm(prev => ({ ...prev, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
-    const payload = {
-      ...form,
-      genre: form.genre.split(",").map((g) => g.trim()),
-      runtime: Number(form.runtime),
-    };
-
     try {
-      if (isEdit) {
-        await movieApi.update(id, payload);
-      } else {
-        await movieApi.create(payload);
-      }
-      navigate("/movies");
-    } catch (err) {
-      alert("Lỗi: " + err.message);
-    } finally {
-      setLoading(false);
-    }
+      if (isEdit) await api.put(`/movies/${id}`, form);
+      else await api.post('/movies', form);
+      navigate('/admin/movies');
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   return (
     <>
-      <PageMeta
-        title={`${isEdit ? "Sửa" : "Thêm"} Phim | Admin`}
-        description="Form quản lý phim"
-      />
-      <PageBreadCrumb pageTitle={isEdit ? "Sửa Phim" : "Thêm Phim Mới"} />
+      <PageMeta title={`${isEdit ? 'Sửa' : 'Thêm'} Phim | CineAdmin`} />
+      <PageBreadCrumb pageTitle={isEdit ? 'Sửa phim' : 'Thêm phim mới'}
+        items={[{ label: 'Phim', path: '/admin/movies' }, { label: isEdit ? 'Sửa' : 'Thêm mới' }]} />
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-        <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="mx-auto max-w-3xl">
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 space-y-5">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Tên phim *
-              </label>
-              <input
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                required
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Thể loại (phân cách bằng dấu phẩy)
-              </label>
-              <input
-                name="genre"
-                value={form.genre}
-                onChange={handleChange}
-                placeholder="Hành động, Phiêu lưu, Khoa học viễn tưởng"
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Thời lượng (phút)
-              </label>
-              <input
-                name="runtime"
-                type="number"
-                value={form.runtime}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Ngày phát hành
-              </label>
-              <input
-                name="release_date"
-                type="date"
-                value={form.release_date}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Trạng thái
-              </label>
-              <select
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              >
-                <option value="coming_soon">Sắp chiếu</option>
-                <option value="now_showing">Đang chiếu</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Trailer URL
-              </label>
-              <input
-                name="trailer_url"
-                value={form.trailer_url}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-              />
-            </div>
+            <InputField label="Tên phim" id="title" value={form.title} onChange={handleChange('title')} required className="md:col-span-2"/>
+            <InputField label="Tagline" id="tagline" value={form.tagline} onChange={handleChange('tagline')} />
+            <InputField label="Ngôn ngữ" id="lang" value={form.original_language} onChange={handleChange('original_language')} />
+            <InputField label="Thời lượng (phút)" id="runtime" type="number" value={form.runtime} onChange={handleChange('runtime')} />
+            <InputField label="Đánh giá" id="rating" type="number" value={form.vote_average} onChange={handleChange('vote_average')} />
+            <InputField label="Ngày chiếu" id="release" type="date" value={form.release_date} onChange={handleChange('release_date')} />
+            <InputField label="Trailer URL" id="trailer" value={form.trailer_url} onChange={handleChange('trailer_url')} />
+            <InputField label="Poster URL" id="poster" value={form.poster_path} onChange={handleChange('poster_path')} className="md:col-span-2"/>
           </div>
-
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-              Poster URL
-            </label>
-            <input
-              name="poster_path"
-              value={form.poster_path}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-            />
+            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Mô tả</label>
+            <textarea rows={4} value={form.overview} onChange={handleChange('overview')}
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:bg-gray-900 dark:border-gray-700 dark:text-white/90"/>
           </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-              Mô tả
-            </label>
-            <textarea
-              name="overview"
-              value={form.overview}
-              onChange={handleChange}
-              rows={4}
-              className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-            >
-              {loading ? "Đang lưu..." : isEdit ? "Cập nhật" : "Tạo Phim"}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/movies")}
-              className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
-            >
-              Hủy
-            </button>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => navigate('/admin/movies')}>Huỷ</Button>
+            <Button type="submit" disabled={loading}>{loading ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Thêm phim'}</Button>
           </div>
         </form>
       </div>
     </>
   );
-}
+};
+
+export default MovieForm;

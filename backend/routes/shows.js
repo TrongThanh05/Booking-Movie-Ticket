@@ -1,22 +1,64 @@
 import express from 'express';
 import Show from '../models/Show.js';
 import Room from '../models/Room.js';
+import { adminMiddleware } from '../middleware/auth.js';
+import { paginate } from '../utils/paginate.js';
 
 const router = express.Router();
+
+// ============================================================
+// HELPER: Kiểm tra room thuộc theater của admin
+// Trả về room nếu hợp lệ, throw error nếu không hợp lệ
+// ============================================================
+const assertRoomBelongsToTheater = async (roomId, theaterScope) => {
+  const room = await Room.findById(roomId).select('theater_id');
+  if (!room) {
+    const err = new Error('Room not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (room.theater_id.toString() !== theaterScope.toString()) {
+    const err = new Error('Phòng chiếu này không thuộc rạp của bạn');
+    err.statusCode = 403;
+    throw err;
+  }
+  return room;
+};
+
+// ============================================================
+// HELPER: Kiểm tra show thuộc theater của admin (qua cinema field)
+// ============================================================
+const assertShowBelongsToTheater = async (showId, theaterScope) => {
+  const show = await Show.findById(showId).select('cinema');
+  if (!show) {
+    const err = new Error('Show not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (show.cinema.toString() !== theaterScope.toString()) {
+    const err = new Error('Lịch chiếu này không thuộc rạp của bạn');
+    err.statusCode = 403;
+    throw err;
+  }
+  return show;
+};
 
 // ============================================================
 // CRUD CƠ BẢN
 // ============================================================
 
-// Get all shows
+// Get all shows (with pagination)
 router.get('/', async (req, res) => {
   try {
-    const shows = await Show.find()
-      .populate('movie')
-      .populate('cinema')
-      .populate('room_id')
-      .sort({ showDateTime: 1 });
-    res.json(shows);
+    const result = await paginate(Show, {}, req.query, {
+      defaultSort: { showDateTime: 1 },
+      populate: [
+        { path: 'movie',   select: 'title poster_path' },
+        { path: 'cinema',  select: 'name location' },
+        { path: 'room_id', select: 'name screen_type' },
+      ],
+    });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -88,23 +130,69 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create show (admin)
-router.post('/', async (req, res) => {
-  const show = new Show(req.body);
+// ============================================================
+// POST /api/shows — Tạo lịch chiếu mới
+//
+// Phân quyền:
+//   • Super-admin  → tạo cho bất kỳ rạp/phòng nào
+//   • Theater-owner→ CHỈ tạo cho phòng thuộc rạp mình quản lý
+//                    cinema (theater) phải khớp req.theaterScope
+// ============================================================
+router.post('/', adminMiddleware, async (req, res) => {
   try {
+    // ── Theater-owner scope enforcement ────────────────────────────────────
+    if (req.isTheaterOwner) {
+      // Kiểm tra cinema (theater) khớp với rạp admin quản lý
+      const cinemaId = req.body.cinema;
+      if (!cinemaId) {
+        req.body.cinema = req.theaterScope;
+      } else if (cinemaId.toString() !== req.theaterScope.toString()) {
+        return res.status(403).json({
+          message: 'Bạn chỉ có quyền tạo lịch chiếu cho rạp của mình',
+        });
+      }
+
+      // Kiểm tra room thuộc theater của admin
+      if (req.body.room_id) {
+        await assertRoomBelongsToTheater(req.body.room_id, req.theaterScope);
+      }
+    }
+
+    const show = new Show(req.body);
     const savedShow = await show.save();
     await savedShow.populate('movie');
     await savedShow.populate('cinema');
     await savedShow.populate('room_id');
     res.status(201).json(savedShow);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const code = error.statusCode || 400;
+    res.status(code).json({ message: error.message });
   }
 });
 
-// Update show (admin)
-router.put('/:id', async (req, res) => {
+// ============================================================
+// PUT /api/shows/:id — Cập nhật lịch chiếu
+//
+// Phân quyền:
+//   • Super-admin  → sửa bất kỳ
+//   • Theater-owner→ CHỈ sửa lịch chiếu thuộc rạp mình
+//                    KHÔNG cho đổi cinema sang rạp khác
+// ============================================================
+router.put('/:id', adminMiddleware, async (req, res) => {
   try {
+    // ── Theater-owner scope enforcement ────────────────────────────────────
+    if (req.isTheaterOwner) {
+      await assertShowBelongsToTheater(req.params.id, req.theaterScope);
+
+      // Không cho đổi cinema (chuyển show sang rạp khác)
+      delete req.body.cinema;
+
+      // Nếu đổi room_id, phải check room mới cũng thuộc theater
+      if (req.body.room_id) {
+        await assertRoomBelongsToTheater(req.body.room_id, req.theaterScope);
+      }
+    }
+
     const show = await Show.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     })
@@ -113,17 +201,30 @@ router.put('/:id', async (req, res) => {
       .populate('room_id');
     res.json(show);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const code = error.statusCode || 400;
+    res.status(code).json({ message: error.message });
   }
 });
 
-// Delete show (admin)
-router.delete('/:id', async (req, res) => {
+// ============================================================
+// DELETE /api/shows/:id — Xóa lịch chiếu
+//
+// Phân quyền:
+//   • Super-admin  → xóa bất kỳ
+//   • Theater-owner→ CHỈ xóa lịch chiếu thuộc rạp mình
+// ============================================================
+router.delete('/:id', adminMiddleware, async (req, res) => {
   try {
+    // ── Theater-owner scope enforcement ────────────────────────────────────
+    if (req.isTheaterOwner) {
+      await assertShowBelongsToTheater(req.params.id, req.theaterScope);
+    }
+
     await Show.findByIdAndDelete(req.params.id);
     res.json({ message: 'Show deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const code = error.statusCode || 500;
+    res.status(code).json({ message: error.message });
   }
 });
 

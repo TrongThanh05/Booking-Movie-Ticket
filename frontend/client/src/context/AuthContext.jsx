@@ -8,6 +8,7 @@
  *   - logout()                → xóa session
  *   - AuthModal controls      → mở/đóng floating modal (client side)
  *   - isLoggedIn, isAdmin     → computed flags cho route guards
+ *   - isTheaterOwner, theaterId → phân quyền admin rạp
  */
 import { createContext, useContext, useState, useCallback } from 'react';
 import api from '../lib/api';
@@ -50,8 +51,24 @@ export const AuthProvider = ({ children }) => {
   const [authModalTab,  setAuthModalTab]  = useState('login');
 
   // ── Computed flags ──────────────────────────────────────────────────────────
-  const isLoggedIn = Boolean(token && user);
-  const isAdmin    = isLoggedIn && user?.role === 'admin';
+  const isLoggedIn      = Boolean(token && user);
+  const isAuthenticated = isLoggedIn; // alias cho admin components
+  const isAdmin         = isLoggedIn && user?.role === 'admin';
+
+  /**
+   * isTheaterOwner: admin được gán quản lý 1 rạp cụ thể.
+   * - true  nếu role === 'admin' && theater_id !== null
+   * - false nếu role !== 'admin' || theater_id === null (super-admin)
+   *
+   * theaterId: ObjectId string của rạp admin đang quản lý (null nếu super-admin).
+   * Frontend dùng giá trị này để:
+   *   1. Auto-filter rooms/shows/bookings theo rạp
+   *   2. Ẩn các nút tạo/xóa theater (chỉ super-admin)
+   *   3. Hiển thị tên rạp trên header
+   */
+  const isTheaterOwner = isAdmin && Boolean(user?.theater_id);
+  const isSuperAdmin   = isAdmin && !user?.theater_id;
+  const theaterId      = user?.theater_id || null;
 
   // ── login() — Gọi API đăng nhập ────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
@@ -91,7 +108,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user, token,
-        isLoggedIn, isAdmin,
+        isLoggedIn, isAuthenticated, isAdmin,
+        isTheaterOwner, isSuperAdmin, theaterId,
         login, register, logout,
         authModalOpen, authModalTab,
         openAuthModal, closeAuthModal, setAuthModalTab,

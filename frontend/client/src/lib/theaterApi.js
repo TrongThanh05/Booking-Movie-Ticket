@@ -1,7 +1,7 @@
 import api from "./api";
 
 export const theaterApi = {
-  getAll: () => api.get("/theaters").then(r => r.data),
+  getAll: (params) => api.get("/theaters", { params: { limit: 999, ...params } }).then(r => r.data?.data || r.data),
   getById: (id) => api.get(`/theaters/${id}`).then(r => r.data),
   create: (data) => api.post("/theaters", data).then(r => r.data),
   update: (id, data) => api.put(`/theaters/${id}`, data).then(r => r.data),

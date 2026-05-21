@@ -1,13 +1,17 @@
 import express from 'express';
 import Movie from '../models/Movie.js';
+import { paginate } from '../utils/paginate.js';
 
 const router = express.Router();
 
-// Get all movies
+// Get all movies (with pagination)
 router.get('/', async (req, res) => {
   try {
-    const movies = await Movie.find().sort({ createdAt: -1 });
-    res.json(movies);
+    const result = await paginate(Movie, {}, req.query, {
+      defaultSort: { createdAt: -1 },
+      searchFields: ['title', 'tagline', 'original_language'],
+    });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

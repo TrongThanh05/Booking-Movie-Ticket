@@ -1,34 +1,21 @@
-import { Navigate, Outlet, useLocation } from "react-router";
-import { useAuth } from "../context/AuthContext";
-
 /**
- * ProtectedRoute — Bảo vệ các route yêu cầu đăng nhập + quyền admin.
- *
- * Logic phân quyền:
- *   1. Chưa đăng nhập  → redirect /signin (kèm `from` để quay lại sau login)
- *   2. Đã đăng nhập + role !== 'admin' → redirect /access-denied
- *   3. Đã đăng nhập + role === 'admin' → render <Outlet /> (nội dung trang)
+ * ProtectedRoute.jsx — Admin role guard
+ * Redirect to /admin/access-denied nếu không phải admin
  */
-export default function ProtectedRoute() {
-  const { isAuthenticated, isAdmin } = useAuth();
-  const location = useLocation();
+import { Navigate, Outlet } from 'react-router-dom';
+// admin/src/components/ → ../lib/useAuth (re-exports from client AuthContext)
+import { useAuth } from '../lib/useAuth';
 
-  // ── Chưa đăng nhập: về trang login, lưu lại URL hiện tại ─────────────────
-  if (!isAuthenticated) {
-    return (
-      <Navigate
-        to="/signin"
-        state={{ from: location }}  // dùng để redirect lại sau khi login thành công
-        replace
-      />
-    );
+const AdminProtectedRoute = () => {
+  const { isLoggedIn, isAdmin } = useAuth();
+
+  if (!isLoggedIn) {
+    return <Navigate to="/" replace />;
   }
-
-  // ── Đã login nhưng không phải admin ───────────────────────────────────────
   if (!isAdmin) {
-    return <Navigate to="/access-denied" replace />;
+    return <Navigate to="/admin/access-denied" replace />;
   }
-
-  // ── Hợp lệ: render trang được bảo vệ ─────────────────────────────────────
   return <Outlet />;
-}
+};
+
+export default AdminProtectedRoute;

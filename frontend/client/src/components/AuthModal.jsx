@@ -222,9 +222,10 @@ const AuthModal = () => {
   const handleSuccess = (user) => {
     closeAuthModal();
     if (user.role === 'admin') {
-      navigate('/admin/dashboard');
+      // Cùng port → cùng app → navigate trực tiếp đến admin dashboard
+      navigate('/admin');
     }
-    // user role: stay on current page — toast is enough
+    // user thường: ở lại trang hiện tại — toast là đủ
   };
 
   const tab = authModalTab;

@@ -36,7 +36,7 @@ api.interceptors.response.use(
 );
 
 // ========== MOVIES ==========
-export const getMovies = () => api.get('/movies');
+export const getMovies = (params) => api.get('/movies', { params: { limit: 999, ...params } });
 export const getMovieById = (id) => api.get(`/movies/${id}`);
 export const createMovie = (movieData) => api.post('/movies', movieData);
 export const updateMovie = (id, movieData) =>
@@ -44,7 +44,7 @@ export const updateMovie = (id, movieData) =>
 export const deleteMovie = (id) => api.delete(`/movies/${id}`);
 
 // ========== THEATERS ==========
-export const getTheaters = () => api.get('/theaters');
+export const getTheaters = (params) => api.get('/theaters', { params: { limit: 999, ...params } });
 export const getTheaterById = (id) => api.get(`/theaters/${id}`);
 export const createTheater = (theaterData) => api.post('/theaters', theaterData);
 export const updateTheater = (id, theaterData) =>
@@ -61,7 +61,7 @@ export const updateRoom    = (id, roomData) => api.put(`/rooms/${id}`, roomData)
 export const deleteRoom    = (id) => api.delete(`/rooms/${id}`);
 
 // ========== SHOWS ==========
-export const getShows = () => api.get('/shows');
+export const getShows = (params) => api.get('/shows', { params: { limit: 999, ...params } });
 export const getShowsByDate = (date) => api.get(`/shows/by-date/${date}`);
 export const getShowsByTheater = (theaterId, date) =>
   api.get('/shows', {

@@ -11,8 +11,8 @@ const voucherSchema = new mongoose.Schema({
     is_active: { type: Boolean, default: true },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
-    applicable_cinemas: [{ type: String }],
-    applicable_movies: [{type: String}]
+    applicable_cinemas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Cinema' }],
+    applicable_movies: [{type: mongoose.Schema.Types.ObjectId, ref: 'Movie'}]
 });
 
 const Voucher = mongoose.model('Voucher', voucherSchema);

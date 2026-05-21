@@ -1,27 +1,47 @@
-import { SidebarProvider, useSidebar } from "../context/SidebarContext";
-import { Outlet } from "react-router";
-import AppHeader from "./AppHeader";
-import Backdrop from "./Backdrop";
-import AppSidebar from "./AppSidebar";
+/**
+ * AppLayout.jsx — Layout chính của Admin Dashboard
+ *
+ * Cấu trúc:
+ *   ┌─────────┬──────────────────────────────┐
+ *   │         │         AppHeader             │
+ *   │ Sidebar ├──────────────────────────────│
+ *   │         │       Main Content            │
+ *   │         │       (<Outlet />)            │
+ *   └─────────┴──────────────────────────────┘
+ */
+import { Outlet } from 'react-router-dom';
+import { SidebarProvider, useSidebar } from '../context/SidebarContext';
+import AppSidebar from './AppSidebar';
+import AppHeader from './AppHeader';
+import Backdrop from './Backdrop';
 
 const LayoutContent = () => {
-  const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { isExpanded, isMobile } = useSidebar();
+
+  // Content margin-left tuỳ thuộc sidebar state
+  const contentMargin = isMobile
+    ? 'ml-0'
+    : isExpanded
+      ? 'ml-[280px]'
+      : 'ml-[90px]';
 
   return (
-    <div className="min-h-screen xl:flex">
-      <div>
-        <AppSidebar />
-        <Backdrop />
-      </div>
-      <div
-        className={`flex-1 transition-all duration-300 ease-in-out ${
-          isExpanded || isHovered ? "lg:ml-[290px]" : "lg:ml-[90px]"
-        } ${isMobileOpen ? "ml-0" : ""}`}
-      >
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Sidebar */}
+      <AppSidebar />
+
+      {/* Backdrop (mobile only) */}
+      <Backdrop />
+
+      {/* Main wrapper */}
+      <div className={`flex flex-col transition-all duration-300 ease-in-out ${contentMargin}`}>
+        {/* Header */}
         <AppHeader />
-        <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+
+        {/* Page Content */}
+        <main className="flex-1 p-4 md:p-6">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );
