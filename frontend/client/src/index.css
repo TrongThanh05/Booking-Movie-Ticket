@@ -408,3 +408,166 @@ body{
   opacity: 0;
   -webkit-appearance: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES — kích hoạt khi <html> có class "light"
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+html {
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+/* Nền toàn trang */
+html.light body {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #0f172a;            /* slate-900 */
+}
+
+/* Gradient backgrounds trên các page */
+html.light .bg-gradient-to-b.from-gray-900,
+html.light .bg-gradient-to-b.from-gray-900.via-black,
+html.light [class*="from-gray-900"] {
+  background: linear-gradient(to bottom, #f1f5f9, #e2e8f0) !important;
+}
+
+html.light .bg-black\/20,
+html.light .bg-black\/30,
+html.light .bg-black\/40,
+html.light .bg-black\/50,
+html.light .bg-black\/60,
+html.light .bg-black\/80,
+html.light .bg-black\/90,
+html.light .bg-black\/95 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Text màu trắng → chuyển sang đậm */
+html.light .text-dark {
+  color: #0f172a !important; /* slate-900 */
+}
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #475569 !important; /* slate-600 */
+}
+
+/* Card phim */
+html.light .bg-gray-800 {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05) !important;
+}
+html.light .bg-gray-900 {
+  background-color: #f8fafc !important;
+}
+
+/* Navbar */
+html.light nav.fixed {
+  background-color: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Các nút bg-white/10 */
+html.light .bg-white\/10 {
+  background-color: rgba(0,0,0,0.06) !important;
+}
+html.light .hover\:bg-white\/20:hover {
+  background-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Border */
+html.light .border-white\/10,
+html.light .border-gray-700\/50 {
+  border-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Input fields */
+html.light input,
+html.light select {
+  background-color: rgba(0,0,0,0.04) !important;
+  color: #0f172a !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+html.light input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Tac vu 2: Text tren nen do luon trang - chi ap dung cho nut thuc su nen do dam */
+/* NOTE: CHI ap dung cho bg-red-500 tro len, KHONG ap dung cho bg-red-50/bg-red-100 (nav link pastel) */
+html.light button[class*="from-red-"],
+html.light a[class*="from-red-"] {
+  color: #ffffff !important;
+}
+html.light button.bg-red-500,
+html.light button.bg-red-600,
+html.light button.bg-red-700,
+html.light a.bg-red-500,
+html.light a.bg-red-600,
+html.light a.bg-red-700 {
+  color: #ffffff !important;
+}
+html.light button.bg-red-500 span,
+html.light button.bg-red-500 svg,
+html.light button.bg-red-600 span,
+html.light button.bg-red-600 svg {
+  color: #ffffff !important;
+}
+/* Gradient cam-vang (Dat Ve Ngay) */
+html.light [class*="from-orange-"][class*="to-yellow-"] {
+  color: #ffffff !important;
+}
+html.light [class*="from-orange-"][class*="to-yellow-"] span,
+html.light [class*="from-orange-"][class*="to-yellow-"] svg {
+  color: #ffffff !important;
+}
+
+/* === NAV LINK PROTECTION: Dam bao nav links luon hien thi dung mau === */
+/* Default (inactive) nav links: text toi, ro rang */
+html.light nav a.text-gray-700 {
+  color: #1e293b !important; /* slate-800 */
+}
+/* Active nav link: text do dam, khong bi override boi bat ky rule nao */
+html.light nav a.text-red-700,
+html.light nav a.text-red-700 svg,
+html.light nav a.text-red-700 span {
+  color: #b91c1c !important; /* red-700 */
+}
+/* Hover nav link */
+html.light nav a:hover.\hover\:text-red-700 {
+  color: #b91c1c !important;
+}
+
+/* Tac vu 3: Releases filter bar & cac bg-white/5 */
+html.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light .hover\:bg-white\/20:hover {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+/* Border phu */
+html.light .border-white\/5 { border-color: rgba(0,0,0,0.05) !important; }
+html.light .border-white\/8 { border-color: rgba(0,0,0,0.06) !important; }
+html.light .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
+html.light .border-white\/20 { border-color: rgba(0,0,0,0.12) !important; }
+html.light .border-gray-700\/50 { border-color: rgba(0,0,0,0.08) !important; }
+/* Sticky filter panel (bg-black/75 backdrop-blur) — CHI ap dung cho phan tu KHONG phai nav */
+html.light .backdrop-blur-xl:not(nav):not(nav *) {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+/* Date chips inactive */
+html.light button.bg-white\/5 {
+  color: #475569 !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+html.light button.bg-white\/5:hover {
+  color: #0f172a !important;
+}
+/* Gray-500 labels */
+html.light .text-gray-500 {
+  color: #64748b !important;
+}

@@ -20,10 +20,12 @@ import BlurCircle from '../components/BlurCircle';
 import MovieCard from '../components/MovieCard';
 import { useYouTubePlayer } from '../components/data/useYouTubePlayer';
 import { getMovieById, getMovies, getShowsByMovie } from '../lib/api';
+import useDarkMode from '../hooks/useDarkMode';
 
 const MovieDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [isDark] = useDarkMode();
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -306,18 +308,28 @@ const MovieDetail = () => {
                 </button>
                 <button
                   onClick={() => trailerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
+                  className={`px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
+                    isDark
+                      ? 'bg-white/10 hover:bg-white/20 text-white'
+                      : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                  }`}
                 >
                   <Play className="w-5 h-5" /> Xem Trailer
                 </button>
                 <button
                   onClick={toggleFavorite}
-                  className={`px-6 py-3 ${isFavorite ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-white/10 hover:bg-white/20'} text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2`}
+                  className={`px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
+                    isFavorite
+                      ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                      : isDark
+                        ? 'bg-white/10 hover:bg-white/20 text-white'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                  }`}
                 >
                   <Heart
                     className="w-5 h-5"
                     fill={isFavorite ? 'yellow' : 'none'}
-                    stroke="white"
+                    stroke={isFavorite ? 'white' : isDark ? 'white' : '#1e293b'}
                   />
                   {isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
                 </button>
@@ -330,14 +342,14 @@ const MovieDetail = () => {
         <div className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6 mb-12">
           <div className="flex items-center gap-3 mb-6">
             <Calendar className="w-6 h-6 text-red-500" />
-            <h2 className="text-2xl font-bold text-white">
-              Chọn Ngày & Suất Chiếu
+            <h2 className={`text-2xl font-bold mb-6 ${ isDark ? 'text-white' : 'text-slate-900' }`}>
+              Chọn Ngày &amp; Suất Chiếu
             </h2>
           </div>
 
           {/* Date Selector */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className={`text-lg font-semibold mb-4 ${ isDark ? 'text-white' : 'text-slate-800' }`}>
               Chọn ngày:
             </h3>
             <div className="flex items-center gap-2">
@@ -385,7 +397,7 @@ const MovieDetail = () => {
           {/* Showtimes — real data grouped by cinema */}
           {selectedDate && (
             <div>
-              <h3 className="text-lg font-semibold text-white mb-4">
+              <h3 className={`text-lg font-semibold mb-4 ${ isDark ? 'text-white' : 'text-slate-800' }`}>
                 Suất chiếu ngày {formatDateVietnamese(selectedDate).day}{' '}
                 {formatDateVietnamese(selectedDate).month}:
               </h3>
@@ -416,7 +428,7 @@ const MovieDetail = () => {
                       <div className="flex items-start gap-2 mb-3">
                         <MapPin className="w-4 h-4 text-red-400 mt-1 flex-shrink-0" />
                         <div>
-                          <p className="text-white font-semibold text-sm">{cinema?.name}</p>
+                          <p className={`font-semibold text-sm ${ isDark ? 'text-white' : 'text-slate-900' }`}>{cinema?.name}</p>
                           <p className="text-gray-400 text-xs">{cinema?.location}{cinema?.address ? ` · ${cinema.address}` : ''}</p>
                         </div>
                       </div>
@@ -457,7 +469,7 @@ const MovieDetail = () => {
 
         {/* Additional Details */}
         <div className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6 mb-12">
-          <h2 className="text-2xl font-bold text-white mb-4">
+          <h2 className={`text-2xl font-bold mb-4 ${ isDark ? 'text-white' : 'text-slate-900' }`}>
             Thông Tin Chi Tiết
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-300">
@@ -491,7 +503,7 @@ const MovieDetail = () => {
 
         {/* Cast Section */}
         <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">Dàn Diễn Viên</h2>
+          <h2 className={`text-2xl font-bold mb-6 ${ isDark ? 'text-white' : 'text-slate-900' }`}>Dàn Diễn Viên</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
             {movie.casts.slice(0, 8).map((cast, index) => (
               <div key={index} className="text-center group">
@@ -510,7 +522,7 @@ const MovieDetail = () => {
         {/* You May Also Like Section */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
+            <h2 className={`text-2xl font-bold ${ isDark ? 'text-white' : 'text-slate-900' }`}>
               Phim Bạn Có Thể Thích
             </h2>
             <button
@@ -534,7 +546,7 @@ const MovieDetail = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
                 <Play className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white">Trailer Chính Thức</h2>
+              <h2 className={`text-2xl font-bold ${ isDark ? 'text-white' : 'text-slate-900' }`}>Trailer Chính Thức</h2>
             </div>
             <div className="relative group">
               <div

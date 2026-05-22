@@ -145,7 +145,7 @@ const Theaters = () => {
                   className="w-full h-48 object-cover rounded-xl mb-4"
                   loading="lazy"
                 />
-                <h3 className="font-semibold text-white text-lg mb-2">
+                <h3 className="font-semibold text-red-500 text-lg mb-2">
                   {theater.name}
                 </h3>
                 <p className="text-sm text-gray-400 mb-4 flex items-center gap-2">
@@ -165,7 +165,7 @@ const Theaters = () => {
                       {theater.amenities.slice(0, 3).map((amenity, idx) => (
                         <span
                           key={idx}
-                          className="text-xs bg-red-600/30 text-red-300 px-2 py-1 rounded"
+                          className="text-xs bg-red-600/40 text-white px-2 py-1 rounded"
                         >
                           {amenity}
                         </span>

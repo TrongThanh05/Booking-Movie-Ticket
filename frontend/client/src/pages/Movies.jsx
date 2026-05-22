@@ -299,7 +299,7 @@ const Movies = () => {
 
         {/* Results Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="text-white">
+          <div className="text-red-700">
             <h2 className="text-2xl font-bold mb-1">
               {searchQuery
                 ? `Kết quả tìm kiếm: "${searchQuery}"`

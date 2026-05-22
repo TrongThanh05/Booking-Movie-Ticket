@@ -254,7 +254,7 @@ const AuthModal = () => {
               <Clapperboard className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-red-500">
                 {tab === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
               </h2>
               <p className="text-xs text-gray-400">

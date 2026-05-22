@@ -229,7 +229,7 @@ const TrailerSection = () => {
       {/* Trailer Playlist */}
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Danh sách trailer</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-red-500">Danh sách trailer</h2>
           <div className="text-gray-400">
             {currentIndex + 1} / {trailers.length}
           </div>
@@ -241,7 +241,7 @@ const TrailerSection = () => {
               key={trailer.id}
               className={`group cursor-pointer transition-all duration-300 ${
                 currentTrailer.id === trailer.id 
-                  ? 'ring-4 ring-red-500 scale-105' 
+                  ? 'ring-4 ring-red-500 scale-105 rounded-2xl' 
                   : 'hover:scale-105 hover:ring-2 hover:ring-white/30'
               }`}
               onClick={() => changeTrailer(trailer, index)}

@@ -101,7 +101,7 @@ const MovieCard = ({ movie, viewMode = 'grid', onRemove }) => {
       <div className="mt-3 space-y-2 flex-1">
         <h3
           onClick={handleCardClick}
-          className="font-semibold text-white text-lg line-clamp-2 hover:text-red-400 transition-colors cursor-pointer"
+          className="font-semibold text-red-500 text-lg line-clamp-2 hover:text-red-600 transition-colors cursor-pointer"
           title={movie.title}
         >
           {movie.title}

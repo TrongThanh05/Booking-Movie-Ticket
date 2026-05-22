@@ -1,4 +1,5 @@
-import logo from './logo_white.png';
+import logo from './logo_dark.png';
+import logoLight from './logo_light.png';
 import marvelLogo from './marvelLogo.svg';
 import googlePlay from './googlePlay.svg';
 import appStore from './appStore.svg';
@@ -7,6 +8,7 @@ import profile from './profile.png';
 
 export const assets = {
   logo,
+  logoLight,
   marvelLogo,
   googlePlay,
   appStore,

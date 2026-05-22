@@ -1,5 +1,6 @@
 import React from 'react';
 import { assets } from '../assets/assets';
+import useDarkMode from '../hooks/useDarkMode';
 import { 
   Mail, 
   Phone, 
@@ -14,7 +15,7 @@ import {
 // Subcomponent for Footer Section
 const FooterSection = ({ title, links }) => (
   <div className="flex flex-col">
-    <h3 className="font-bold text-base mb-2 text-white">{title}</h3>
+    <h3 className="font-bold text-base mb-2 text-red-500">{title}</h3>
     <ul className="space-y-1 text-sm">
       {links.map((link, index) => (
         <li key={index}>
@@ -58,6 +59,7 @@ const ContactInfo = ({ info }) => (
 
 const Footer = () => {
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const [isDark] = useDarkMode();
 
   const footerSections = [
     {
@@ -106,7 +108,11 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           {/* Logo & Description */}
           <div>
-            <img src={assets.logo} alt="MovieHub Logo" className="h-10 mb-2" />
+            <img
+              src={isDark ? assets.logo : assets.logoLight}
+              alt="TCineBook Logo"
+              className="h-10 mb-2 transition-all duration-500"
+            />
             <p className="text-sm mb-2">Khám phá phim mới và trailer hot tại TCineBook!</p>
           </div>
 
@@ -117,7 +123,7 @@ const Footer = () => {
 
           {/* Contact Section */}
           <div>
-            <h3 className="font-bold text-base mb-2 text-white">Liên hệ</h3>
+            <h3 className="font-bold text-base mb-2 text-red-500">Liên hệ</h3>
             <ContactInfo info={contactInfo} />
           </div>
         </div>

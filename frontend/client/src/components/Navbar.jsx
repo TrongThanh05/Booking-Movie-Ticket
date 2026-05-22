@@ -4,14 +4,18 @@ import { assets } from '../assets/assets';
 import {
   Menu, Search, TicketCheck, X, Home, Film,
   MapPin, Calendar, Heart, User, LogIn, LogOut, ChevronDown, Shield,
+  Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import useDarkMode from '../hooks/useDarkMode';
 
 const Navbar = () => {
   const [isOpen, setIsOpen]   = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const [isDark, toggleTheme] = useDarkMode();
 
   const { user, isAdmin, isLoggedIn, logout, openAuthModal } = useAuth();
   const navigate  = useNavigate();
@@ -70,9 +74,13 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 lg:h-20">
 
-            {/* Logo */}
+            {/* Logo – đổi theo theme */}
             <Link to="/" className="flex-shrink-0 group" onClick={() => scrollTo(0, 0)}>
-              <img src={assets.logo} alt="MovieHub" className="h-8 lg:h-10 w-auto transition-transform duration-300 group-hover:scale-105" />
+              <img
+                src={isDark ? assets.logo : assets.logoLight}
+                alt="TCineBook"
+                className="h-8 lg:h-10 w-auto transition-all duration-500 group-hover:scale-105"
+              />
             </Link>
 
             {/* Desktop nav */}
@@ -83,7 +91,7 @@ const Navbar = () => {
                   <Link key={path} to={path} onClick={handleLinkClick}
                     className={`group relative flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl font-medium transition-all duration-300 text-sm lg:text-base ${
                       active
-                        ? 'text-white bg-red-500/20 border border-red-500/30'
+                        ? 'text-dark bg-red-500/20 border border-red-500/30'
                         : 'text-gray-300 hover:text-white hover:bg-white/10'
                     }`}>
                     <Icon className="w-4 h-4" />
@@ -97,6 +105,17 @@ const Navbar = () => {
             {/* Right section */}
             <div className="flex items-center gap-3">
 
+              {/* Theme toggle button – Sun khi đang dark, Moon khi đang light */}
+              <button
+                onClick={toggleTheme}
+                title={isDark ? 'Chuyển sang Light mode' : 'Chuyển sang Dark mode'}
+                className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all duration-300"
+              >
+                {isDark
+                  ? <Sun  className="w-5 h-5 text-yellow-400 transition-transform duration-300 rotate-0 hover:rotate-12" />
+                  : <Moon className="w-5 h-5 text-blue-400  transition-transform duration-300" />}
+              </button>
+
               {/* Search button */}
               <button className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all duration-300">
                 <Search className="w-5 h-5" />
@@ -105,7 +124,7 @@ const Navbar = () => {
               {/* ── Auth section ── */}
               {!isLoggedIn ? (
                 <button onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-2 px-4 lg:px-6 py-2 lg:py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium rounded-full transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-red-500/25">
+                  className="flex items-center gap-2 px-4 lg:px-6 py-2 lg:py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium rounded-full transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-red-500/25 cursor-pointer">
                   <LogIn className="w-4 h-4" />
                   <span className="hidden sm:inline">Đăng nhập</span>
                 </button>
