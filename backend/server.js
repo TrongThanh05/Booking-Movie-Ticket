@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import connectDB from './config/db.js';
+// import connectDB from './config/db.js';
 
 // Import routes
 import movieRoutes from './routes/movies.js';
@@ -28,13 +28,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-connectDB().then(() => {
-  // Khởi chạy cron giải phóng ghế hết hạn (mỗi 60 giây)
-  startCronUnlock(60000);
-  // Khởi chạy auto-seed lịch chiếu (mỗi 24 giờ)
-  startCronSeedShows();
-});
+// // Connect to MongoDB
+// connectDB().then(() => {
+//   // Khởi chạy cron giải phóng ghế hết hạn (mỗi 60 giây)
+//   startCronUnlock(60000);
+//   // Khởi chạy auto-seed lịch chiếu (mỗi 24 giờ)
+//   startCronSeedShows();
+// });
 
 // Routes
 app.use('/api/movies', movieRoutes);

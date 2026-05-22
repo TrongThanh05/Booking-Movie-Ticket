@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dummyTrailers } from '../assets/assets';
+import YouTube from 'react-youtube';
 import {
   Star,
   Clock,
   MapPin,
   Ticket,
   Play,
+  Pause,
+  Volume2,
+  VolumeX,
   Loader2,
   Heart,
   ChevronLeft,
@@ -15,6 +18,7 @@ import {
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
 import MovieCard from '../components/MovieCard';
+import { useYouTubePlayer } from '../components/data/useYouTubePlayer';
 import { getMovieById, getMovies, getShowsByMovie } from '../lib/api';
 
 const MovieDetail = () => {
@@ -29,6 +33,54 @@ const MovieDetail = () => {
   const [availableDates, setAvailableDates] = useState([]);
   const [shows, setShows] = useState([]);
   const [showsLoading, setShowsLoading] = useState(false);
+  const [showTrailerControls, setShowTrailerControls] = useState(true);
+  const [trailerLoading, setTrailerLoading] = useState(false);
+  const trailerControlsTimeout = useRef(null);
+  const trailerSectionRef = useRef(null);
+
+  const {
+    isPlaying: trailerPlaying,
+    isMuted: trailerMuted,
+    isReady: trailerReady,
+    onReady: onTrailerReady,
+    onStateChange: onTrailerStateChange,
+    onError: onTrailerError,
+    togglePlayPause: toggleTrailerPlayPause,
+    toggleMute: toggleTrailerMute,
+  } = useYouTubePlayer();
+
+  const trailerPlayerOptions = {
+    height: '100%',
+    width: '100%',
+    playerVars: {
+      autoplay: 0,
+      controls: 0,
+      disablekb: 1,
+      fs: 1,
+      iv_load_policy: 3,
+      modestbranding: 1,
+      playsinline: 1,
+      rel: 0,
+      origin: window.location.origin,
+    },
+  };
+
+  // Auto-hide trailer controls
+  useEffect(() => {
+    if (showTrailerControls && trailerPlaying) {
+      trailerControlsTimeout.current = setTimeout(() => {
+        setShowTrailerControls(false);
+      }, 3000);
+    }
+    return () => {
+      if (trailerControlsTimeout.current) clearTimeout(trailerControlsTimeout.current);
+    };
+  }, [showTrailerControls, trailerPlaying]);
+
+  const handleTrailerHover = () => {
+    setShowTrailerControls(true);
+    if (trailerControlsTimeout.current) clearTimeout(trailerControlsTimeout.current);
+  };
 
   // Fetch movie data based on ID
   useEffect(() => {
@@ -253,7 +305,7 @@ const MovieDetail = () => {
                   <Ticket className="w-5 h-5" /> Đặt Vé Ngay
                 </button>
                 <button
-                  onClick={() => navigate(`/movies/trailer/${movie._id}`)}
+                  onClick={() => trailerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
                 >
                   <Play className="w-5 h-5" /> Xem Trailer
@@ -476,29 +528,89 @@ const MovieDetail = () => {
           </div>
         </div>
         {/* Trailer Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">Trailer</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {dummyTrailers.map((trailer, index) => (
-              <a
-                key={index}
-                href={trailer.videoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group"
+        {movie.trailer_url && (
+          <div className="mb-12" ref={trailerSectionRef}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center">
+                <Play className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white">Trailer Chính Thức</h2>
+            </div>
+            <div className="relative group">
+              <div
+                className="relative bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 transition-all duration-500 hover:ring-red-500/30 hover:shadow-red-500/20"
+                onMouseEnter={handleTrailerHover}
+                onMouseLeave={() => setShowTrailerControls(false)}
               >
-                <img
-                  src={trailer.image}
-                  alt={`Trailer ${index + 1} cho ${movie.title}`}
-                  className="w-full h-48 object-cover rounded-xl shadow-md transition-transform group-hover:scale-105"
-                />
-                <p className="text-gray-300 text-sm mt-2 text-center">
-                  Trailer {index + 1}
-                </p>
-              </a>
-            ))}
+                <div className="aspect-video relative">
+                  {/* YouTube Player */}
+                  <YouTube
+                    key={movie.trailer_url}
+                    videoId={movie.trailer_url}
+                    opts={trailerPlayerOptions}
+                    onReady={onTrailerReady}
+                    onStateChange={onTrailerStateChange}
+                    onError={onTrailerError}
+                    className="w-full h-full"
+                  />
+
+                  {/* Loading Overlay */}
+                  {!trailerReady && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-gray-900/95 to-black/95 flex items-center justify-center backdrop-blur-sm">
+                      <div className="text-center">
+                        <div className="w-16 h-16 border-4 border-red-500/20 border-t-red-500 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-white text-lg font-medium">Đang tải trailer...</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Custom Controls Overlay */}
+                  {trailerReady && (
+                    <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 transition-all duration-300 ${
+                      showTrailerControls ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      {/* Top Bar */}
+                      <div className="absolute top-0 left-0 right-0 p-6">
+                        <div className="flex items-center justify-between text-white">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-xl font-bold">{movie.title}</h3>
+                            <span className="px-3 py-1 bg-red-500 rounded-full text-sm font-medium">HD</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Center Play Button */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <button
+                          onClick={toggleTrailerPlayPause}
+                          className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white p-8 rounded-full transition-all duration-300 hover:scale-110 border border-white/20"
+                        >
+                          {trailerPlaying ? (
+                            <Pause className="w-12 h-12" />
+                          ) : (
+                            <Play className="w-12 h-12 ml-1" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Bottom Controls */}
+                      <div className="absolute bottom-0 left-0 right-0 p-6">
+                        <div className="flex items-center justify-end text-white">
+                          <button
+                            onClick={toggleTrailerMute}
+                            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+                          >
+                            {trailerMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

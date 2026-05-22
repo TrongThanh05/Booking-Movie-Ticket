@@ -4,17 +4,17 @@
   "version": "1.0.0",
   "workspaces": [
     "frontend/client",
-    "frontend/admin",
     "backend"
   ],
   "scripts": {
     "dev:client": "npm run dev --workspace=frontend/client",
-    "dev:admin": "npm run dev --workspace=frontend/admin",
     "dev:backend": "npm run dev --workspace=backend",
-    "dev": "npm run dev:backend & npm run dev:client",
+    "dev": "concurrently -n client,backend -c cyan,yellow \"npm run dev:backend\" \"npm run dev:client\"",
+
     "build:client": "npm run build --workspace=frontend/client",
-    "build:admin": "npm run build --workspace=frontend/admin",
-    "lint:client": "npm run lint --workspace=frontend/client",
-    "lint:admin": "npm run lint --workspace=frontend/admin"
+    "lint:client": "npm run lint --workspace=frontend/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }
