@@ -328,7 +328,7 @@ const Movies = () => {
             {filteredMovies.map((movie) => (
               <div
                 key={movie._id}
-                className={`${
+                className={`h-full ${
                   viewMode === 'list'
                     ? 'transform transition-all duration-300 hover:scale-[1.02]'
                     : ''
