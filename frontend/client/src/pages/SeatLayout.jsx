@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
+import TicketQRCode from '../components/TicketQRCode';
 import { getSeatMap, lockSeats, unlockSeats, createBooking } from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -338,53 +339,105 @@ const SeatLayout = () => {
 
   // ====== SUCCESS SCREEN ======
   if (bookingStep === 'success') {
+    const user = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; } })();
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto px-6">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 pb-16 flex items-center justify-center">
+        <BlurCircle top="80px" left="0" />
+        <BlurCircle bottom="80px" right="0" />
+
+        <div className="relative z-10 w-full max-w-lg mx-auto px-4">
+          {/* Success badge */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 mb-4">
+              <Check className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-1">Đặt vé thành công!</h2>
+            <p className="text-gray-400 text-sm">Cảm ơn bạn đã đặt vé tại TCineBook 🎬</p>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-4">
-            Đặt vé thành công!
-          </h2>
-          <div className="bg-black/20 rounded-xl p-6 mb-6">
-            <p className="text-gray-300 mb-2">
-              <strong>Phim:</strong> {show.movie?.title}
-            </p>
-            <p className="text-gray-300 mb-2">
-              <strong>Ngày:</strong> {formatDate(show.showDateTime)}
-            </p>
-            <p className="text-gray-300 mb-2">
-              <strong>Giờ:</strong> {formatTime(show.showDateTime)}
-            </p>
-            <p className="text-gray-300 mb-2">
-              <strong>Rạp:</strong> {show.cinema?.name} - {show.room?.name}
-            </p>
-            <p className="text-gray-300 mb-2">
-              <strong>Ghế:</strong> {selectedSeats.join(', ')}
-            </p>
-            {bookingResult?.booking_code && (
-              <p className="text-gray-300 mb-2">
-                <strong>Mã vé:</strong>{' '}
-                <span className="text-yellow-400 font-mono">
-                  {bookingResult.booking_code}
-                </span>
-              </p>
-            )}
-            <p className="text-green-400 font-bold text-xl">
-              <strong>Tổng:</strong> {formatPrice(calculateTotal())}
-            </p>
+
+          {/* Ticket card */}
+          <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            {/* Gradient top bar */}
+            <div className="h-1 w-full bg-gradient-to-r from-red-500 via-pink-500 to-red-600" />
+
+            <div className="p-6 space-y-5">
+              {/* Movie info */}
+              <div className="flex items-start gap-4">
+                {show.movie?.poster_path && (
+                  <img
+                    src={`/src/assets/images/posters/${show.movie.poster_path}`}
+                    alt={show.movie.title}
+                    className="w-16 h-24 object-cover rounded-lg shadow-md shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white font-bold text-lg leading-tight mb-1 truncate">{show.movie?.title}</h3>
+                  {bookingResult?.booking_code && (
+                    <p className="text-yellow-400 font-mono text-sm font-semibold mb-2">#{bookingResult.booking_code}</p>
+                  )}
+                  <div className="space-y-1 text-sm text-gray-300">
+                    <p>🕐 {formatTime(show.showDateTime)} — {formatDate(show.showDateTime)}</p>
+                    <p>📍 {show.cinema?.name} · {show.room?.name}</p>
+                    <p>🎟️ Ghế: <span className="text-white font-medium">{selectedSeats.join(', ')}</span></p>
+                    <p>👤 {user.name || 'Khách'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider dạng perforated */}
+              <div className="relative flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -ml-9 shrink-0" />
+                <div className="flex-1 border-t border-dashed border-white/20" />
+                <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -mr-9 shrink-0" />
+              </div>
+
+              {/* QR Code */}
+              <div className="flex flex-col items-center">
+                <TicketQRCode
+                  booking={bookingResult}
+                  show={show}
+                  seats={selectedSeats}
+                  total={calculateTotal()}
+                  size={160}
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="relative flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -ml-9 shrink-0" />
+                <div className="flex-1 border-t border-dashed border-white/20" />
+                <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -mr-9 shrink-0" />
+              </div>
+
+              {/* Total */}
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Tổng thanh toán</span>
+                <span className="text-2xl font-bold text-red-400">{formatPrice(calculateTotal())}</span>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-400 mb-6 text-sm">
-            Vé điện tử đã được gửi vào email của bạn. Vui lòng có mặt tại rạp
-            ít nhất 15 phút trước giờ chiếu.
+
+          {/* Note */}
+          <p className="text-center text-gray-500 text-xs mt-4 leading-relaxed">
+            Vé điện tử đã được gửi về email của bạn.<br />
+            Vui lòng có mặt tại rạp ít nhất <strong className="text-gray-400">15 phút</strong> trước giờ chiếu.
           </p>
-          <button
-            onClick={() => navigate('/movies')}
-            className="w-full py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-full transition-colors"
-          >
-            Về trang chủ
-          </button>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={() => navigate('/my-booking')}
+              className="flex-1 py-3 border border-white/20 hover:border-white/40 text-gray-300 hover:text-white font-semibold rounded-full transition-all duration-200"
+            >
+              Lịch sử vé
+            </button>
+            <button
+              onClick={() => navigate('/movies')}
+              className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-full shadow-lg shadow-red-500/30 transition-all duration-200"
+            >
+              Về trang chủ
+            </button>
+          </div>
         </div>
       </div>
     );

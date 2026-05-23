@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Clapperboard } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Clapperboard, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -76,13 +76,17 @@ const LoginForm = ({ onSuccess }) => {
     }
   };
 
-  const set = (k) => (e) => { setForm((p) => ({ ...p, [k]: e.target.value })); setErrors((p) => ({ ...p, [k]: '' })); };
+  const set = (k) => (e) => {
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+    setErrors((p) => ({ ...p, [k]: '', server: '' }));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {errors.server && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          {errors.server}
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-sm animate-[errorShake_0.4s_ease-out]">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{errors.server}</span>
         </div>
       )}
 
@@ -153,13 +157,17 @@ const RegisterForm = ({ onSuccess }) => {
     }
   };
 
-  const set = (k) => (e) => { setForm((p) => ({ ...p, [k]: e.target.value })); setErrors((p) => ({ ...p, [k]: '' })); };
+  const set = (k) => (e) => {
+    setForm((p) => ({ ...p, [k]: e.target.value }));
+    setErrors((p) => ({ ...p, [k]: '', server: '' }));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       {errors.server && (
-        <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          {errors.server}
+        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-sm animate-[errorShake_0.4s_ease-out]">
+          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{errors.server}</span>
         </div>
       )}
 
@@ -320,6 +328,13 @@ const AuthModal = () => {
         @keyframes modalIn {
           from { opacity: 0; transform: scale(0.95) translateY(-8px); }
           to   { opacity: 1; transform: scale(1)    translateY(0);     }
+        }
+        @keyframes errorShake {
+          0%,100% { transform: translateX(0); }
+          20%     { transform: translateX(-6px); }
+          40%     { transform: translateX(6px); }
+          60%     { transform: translateX(-4px); }
+          80%     { transform: translateX(4px); }
         }
       `}</style>
     </div>

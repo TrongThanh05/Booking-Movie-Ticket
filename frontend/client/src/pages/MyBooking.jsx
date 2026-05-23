@@ -10,8 +10,12 @@ import {
   Calendar,
   Search,
   Filter,
+  QrCode,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
+import TicketQRCode from '../components/TicketQRCode';
 import { getUserBookings, cancelBooking } from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -23,6 +27,7 @@ const MyBooking = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedQR, setExpandedQR] = useState(null); // booking._id đang mở QR
   const bookingsPerPage = 5;
 
   // Lấy user từ localStorage
@@ -331,6 +336,28 @@ const MyBooking = () => {
                           Tổng: {formatPrice(booking.total_amount)}
                         </div>
                         <div className="flex gap-3">
+                          {/* QR toggle — chỉ hiện khi vé còn hiệu lực */}
+                          {(booking.status === 'confirmed' || booking.status === 'completed') && (
+                            <button
+                              onClick={() =>
+                                setExpandedQR((prev) =>
+                                  prev === booking._id ? null : booking._id
+                                )
+                              }
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                                expandedQR === booking._id
+                                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                                  : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'
+                              }`}
+                              title="Xem mã QR"
+                            >
+                              <QrCode className="w-4 h-4" />
+                              <span className="hidden sm:inline">Mã QR</span>
+                              {expandedQR === booking._id
+                                ? <ChevronUp className="w-3 h-3" />
+                                : <ChevronDown className="w-3 h-3" />}
+                            </button>
+                          )}
                           <button
                             onClick={() =>
                               navigate(`/my-booking/${booking._id}`)
@@ -338,7 +365,6 @@ const MyBooking = () => {
                             className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
                             title="Xem chi tiết"
                           >
-                            <Eye className="w-5 h-5" />
                           </button>
                           {canCancel(booking) && (
                             <button
@@ -362,6 +388,20 @@ const MyBooking = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* QR Code panel — mở khi click */}
+                      {expandedQR === booking._id && (
+                        <div className="mt-5 pt-5 border-t border-white/10 flex flex-col items-center gap-2 animate-[fadeIn_0.2s_ease-out]">
+                          <p className="text-xs text-gray-400 mb-1">Xuất trình mã này tại quầy vé</p>
+                          <TicketQRCode booking={booking} size={160} />
+                          <style>{`
+                            @keyframes fadeIn {
+                              from { opacity: 0; transform: translateY(-8px); }
+                              to   { opacity: 1; transform: translateY(0); }
+                            }
+                          `}</style>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

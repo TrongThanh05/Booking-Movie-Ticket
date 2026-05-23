@@ -26,10 +26,21 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token hết hạn, xóa và redirect đến login
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      const isAuthEndpoint =
+        requestUrl.includes('/users/login') ||
+        requestUrl.includes('/users/register');
+
+      // Chỉ redirect khi token đã tồn tại trước đó (session hết hạn).
+      // Nếu đang gọi endpoint login/register mà bị 401 (sai password/email)
+      // thì KHÔNG redirect — để form tự hiển thị lỗi bên trong Modal.
+      const hadToken = Boolean(localStorage.getItem('authToken'));
+
+      if (!isAuthEndpoint && hadToken) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },
