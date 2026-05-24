@@ -1,6 +1,8 @@
 import express from 'express';
 import Show from '../models/Show.js';
 import Room from '../models/Room.js';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 import { adminMiddleware } from '../middleware/auth.js';
 import { paginate } from '../utils/paginate.js';
 
@@ -47,10 +49,27 @@ const assertShowBelongsToTheater = async (showId, theaterScope) => {
 // CRUD CƠ BẢN
 // ============================================================
 
-// Get all shows (with pagination)
+// Get all shows (with pagination + optional theater scope)
 router.get('/', async (req, res) => {
   try {
-    const result = await paginate(Show, {}, req.query, {
+    // ── Optional-auth: scope shows theo theater nếu là Cinema Manager ─────
+    let baseFilter = {};
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const decoded = jwt.verify(
+          authHeader.split(' ')[1],
+          process.env.JWT_SECRET || 'your-secret-key',
+        );
+        const user = await User.findById(decoded.id).select('role theater_id');
+        if (user?.role === 'admin' && user.theater_id) {
+          // Cinema Manager → chỉ trả shows thuộc rạp của mình
+          baseFilter = { cinema: user.theater_id };
+        }
+      } catch { /* token không hợp lệ → không scope */ }
+    }
+
+    const result = await paginate(Show, baseFilter, req.query, {
       defaultSort: { showDateTime: 1 },
       populate: [
         { path: 'movie',   select: 'title poster_path' },

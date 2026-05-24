@@ -100,8 +100,9 @@ const theaterAdminMiddleware = (req, res, next) => {
   // Super-admin → bypass scope check
   if (!user.theater_id) return next();
 
-  // Lấy theater cần thao tác từ params hoặc body
-  const targetTheaterId = req.params.theaterId || req.body.theater_id;
+  // Lấy theater cần thao tác từ params (:theaterId hoặc :id) hoặc body
+  const targetTheaterId =
+    req.params.theaterId ?? req.params.id ?? req.body.theater_id;
 
   if (!targetTheaterId) {
     return res.status(400).json({ message: 'theater_id is required' });
@@ -141,5 +142,38 @@ const scopeToTheater = () => {
   };
 };
 
-export { adminMiddleware, theaterAdminMiddleware, requireSuperAdmin, scopeToTheater };
+/* ─────────────────────────────────────────────────────────────────────────────
+ * optionalAdminAuth
+ * Dùng cho các route vừa public vừa cần scope theo admin.
+ * Nếu có Bearer token hợp lệ và user là admin → gắn req.optUser.
+ * Nếu không có token hoặc token lỗi → bỏ qua, req.optUser = null.
+ *
+ * Các thuộc tính được gắn:
+ *   req.optUser.role         → 'admin'
+ *   req.optUser.theater_id   → ObjectId | null
+ *   req.optUser.isTheaterOwner → Boolean
+ * ───────────────────────────────────────────────────────────────────────────*/
+const optionalAdminAuth = async (req, res, next) => {
+  req.optUser = null;
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return next();
+
+    const decoded = jwt.verify(
+      authHeader.split(' ')[1],
+      process.env.JWT_SECRET || 'your-secret-key',
+    );
+    const user = await User.findById(decoded.id).select('role theater_id');
+    if (user?.role === 'admin') {
+      req.optUser = {
+        role:           'admin',
+        theater_id:     user.theater_id || null,
+        isTheaterOwner: Boolean(user.theater_id),
+      };
+    }
+  } catch { /* token không hợp lệ → bỏ qua */ }
+  next();
+};
+
+export { adminMiddleware, theaterAdminMiddleware, requireSuperAdmin, scopeToTheater, optionalAdminAuth };
 export default authMiddleware;

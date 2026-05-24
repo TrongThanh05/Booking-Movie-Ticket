@@ -312,7 +312,7 @@ const SeatLayout = () => {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Đang tải sơ đồ rạp...</p>
+          <p className="text-adaptive text-lg">Đang tải sơ đồ rạp...</p>
         </div>
       </div>
     );
@@ -323,7 +323,7 @@ const SeatLayout = () => {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-white text-2xl font-bold mb-4">
+          <h2 className="text-adaptive text-2xl font-bold mb-4">
             {error || 'Không tìm thấy thông tin'}
           </h2>
           <button
@@ -351,7 +351,7 @@ const SeatLayout = () => {
             <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 mb-4">
               <Check className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-1">Đặt vé thành công!</h2>
+            <h2 className="text-3xl font-bold text-adaptive mb-1">Đặt vé thành công!</h2>
             <p className="text-gray-400 text-sm">Cảm ơn bạn đã đặt vé tại TCineBook 🎬</p>
           </div>
 
@@ -371,14 +371,14 @@ const SeatLayout = () => {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-bold text-lg leading-tight mb-1 truncate">{show.movie?.title}</h3>
+                  <h3 className="text-adaptive font-bold text-lg leading-tight mb-1 truncate">{show.movie?.title}</h3>
                   {bookingResult?.booking_code && (
                     <p className="text-yellow-400 font-mono text-sm font-semibold mb-2">#{bookingResult.booking_code}</p>
                   )}
                   <div className="space-y-1 text-sm text-gray-300">
                     <p>🕐 {formatTime(show.showDateTime)} — {formatDate(show.showDateTime)}</p>
                     <p>📍 {show.cinema?.name} · {show.room?.name}</p>
-                    <p>🎟️ Ghế: <span className="text-white font-medium">{selectedSeats.join(', ')}</span></p>
+                    <p>🎟️ Ghế: <span className="text-adaptive font-medium">{selectedSeats.join(', ')}</span></p>
                     <p>👤 {user.name || 'Khách'}</p>
                   </div>
                 </div>
@@ -459,7 +459,7 @@ const SeatLayout = () => {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">
+            <h1 className="text-2xl md:text-3xl font-bold text-adaptive">
               {show.movie?.title}
             </h1>
             <p className="text-gray-400 flex items-center gap-4">
@@ -610,7 +610,7 @@ const SeatLayout = () => {
                       <div className="bg-gray-800/50 rounded-xl p-4 text-center">
                         <Users className="w-6 h-6 text-gray-400 mx-auto mb-2" />
                         <p className="text-gray-400 text-sm">Ghế thường</p>
-                        <p className="text-white font-bold">
+                        <p className="text-adaptive font-bold">
                           {formatPrice(getPriceByType('regular'))}
                         </p>
                       </div>
@@ -619,7 +619,7 @@ const SeatLayout = () => {
                       <div className="bg-yellow-800/50 rounded-xl p-4 text-center">
                         <Crown className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
                         <p className="text-gray-400 text-sm">Ghế VIP</p>
-                        <p className="text-white font-bold">
+                        <p className="text-adaptive font-bold">
                           {formatPrice(getPriceByType('vip'))}
                         </p>
                       </div>
@@ -628,7 +628,7 @@ const SeatLayout = () => {
                       <div className="bg-pink-800/50 rounded-xl p-4 text-center">
                         <HeartIcon className="w-6 h-6 text-pink-400 mx-auto mb-2" />
                         <p className="text-gray-400 text-sm">Ghế đôi</p>
-                        <p className="text-white font-bold">
+                        <p className="text-adaptive font-bold">
                           {formatPrice(getPriceByType('couple'))}
                         </p>
                       </div>
@@ -639,32 +639,32 @@ const SeatLayout = () => {
 
               {bookingStep === 'confirm' && (
                 <div className="text-center py-12">
-                  <h3 className="text-2xl font-bold text-white mb-8">
+                  <h3 className="text-2xl font-bold text-adaptive mb-8">
                     Xác nhận thông tin đặt vé
                   </h3>
                   <div className="max-w-md mx-auto bg-gray-800/50 rounded-xl p-6 space-y-4">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Phim:</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-adaptive font-semibold">
                         {show.movie?.title}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ngày giờ:</span>
-                      <span className="text-white">
+                      <span className="text-adaptive">
                         {formatDate(show.showDateTime)} -{' '}
                         {formatTime(show.showDateTime)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Rạp:</span>
-                      <span className="text-white">
+                      <span className="text-adaptive">
                         {show.cinema?.name} - {show.room?.name}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ghế:</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-adaptive font-semibold">
                         {selectedSeats.join(', ')}
                       </span>
                     </div>
@@ -683,7 +683,7 @@ const SeatLayout = () => {
               {bookingStep === 'payment' && (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-red-500 mx-auto mb-6"></div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
+                  <h3 className="text-2xl font-bold text-adaptive mb-4">
                     Đang xử lý thanh toán...
                   </h3>
                   <p className="text-gray-400">
@@ -697,7 +697,7 @@ const SeatLayout = () => {
           {/* Booking Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6 sticky top-24">
-              <h3 className="text-xl font-bold text-white mb-6">
+              <h3 className="text-xl font-bold text-adaptive mb-6">
                 Thông tin đặt vé
               </h3>
 
@@ -711,7 +711,7 @@ const SeatLayout = () => {
                     />
                   )}
                   <div className="flex-1">
-                    <h4 className="font-semibold text-white text-sm mb-1">
+                    <h4 className="font-semibold text-adaptive text-sm mb-1">
                       {show.movie?.title}
                     </h4>
                     <p className="text-gray-400 text-xs">
@@ -727,13 +727,13 @@ const SeatLayout = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Ngày:</span>
-                    <span className="text-white">
+                    <span className="text-adaptive">
                       {new Date(show.showDateTime).toLocaleDateString('vi-VN')}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Giờ:</span>
-                    <span className="text-white">
+                    <span className="text-adaptive">
                       {formatTime(show.showDateTime)}
                     </span>
                   </div>
@@ -742,7 +742,7 @@ const SeatLayout = () => {
 
               {selectedSeats.length > 0 && (
                 <div className="mb-6">
-                  <h4 className="text-white font-semibold mb-3">
+                  <h4 className="text-adaptive font-semibold mb-3">
                     Ghế đã chọn:
                   </h4>
                   <div className="flex flex-wrap gap-2">

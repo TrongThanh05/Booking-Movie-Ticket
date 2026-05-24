@@ -1,6 +1,11 @@
 /**
  * MovieList.jsx — Trang Quản lý Phim với bảng dữ liệu đẹp mắt
  * CRUD table: poster, title, genres, runtime, rating, release_date
+ *
+ * Phân quyền UI:
+ *   Super-admin    → thấy tất cả phím, có nút Thêm / Sửa / Xóa
+ *   Cinema Manager → chỉ thấy phím đang chiếu tại rạp mình (server scope),
+ *                    không có nút Thêm / Sửa / Xóa phím toàn cục
  */
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -12,8 +17,10 @@ import Table from '../../components/ui/table/Table';
 import Modal from '../../components/ui/modal/Modal';
 import Pagination from '../../components/ui/pagination/Pagination';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/useAuth';
 
 const MovieList = () => {
+  const { isSuperAdmin } = useAuth();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -94,12 +101,15 @@ const MovieList = () => {
               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
           />
         </div>
-        <Link to="/admin/movies/create">
-          <Button>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Thêm phim mới
-          </Button>
-        </Link>
+        {/* Nút Thêm phim: chỉ super-admin */}
+        {isSuperAdmin && (
+          <Link to="/admin/movies/create">
+            <Button>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Thêm phim mới
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Table */}
@@ -152,14 +162,24 @@ const MovieList = () => {
                 </Table.Cell>
                 <Table.Cell>
                   <div className="flex items-center justify-end gap-1">
-                    <Link to={`/admin/movies/edit/${movie._id}`}>
-                      <button className="rounded-lg p-2 text-gray-500 hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-500/10 transition-colors">
-                        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    {/* Nút Sửa: chỉ super-admin */}
+                    {isSuperAdmin && (
+                      <Link to={`/admin/movies/edit/${movie._id}`}>
+                        <button className="rounded-lg p-2 text-gray-500 hover:bg-brand-50 hover:text-brand-500 dark:hover:bg-brand-500/10 transition-colors" title="Chỉnh sửa">
+                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      </Link>
+                    )}
+                    {/* Nút Xóa: chỉ super-admin */}
+                    {isSuperAdmin && (
+                      <button onClick={() => setDeleteModal({open:true,movie})} className="rounded-lg p-2 text-gray-500 hover:bg-error-50 hover:text-error-500 dark:hover:bg-error-500/10 transition-colors" title="Xóa">
+                        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                       </button>
-                    </Link>
-                    <button onClick={() => setDeleteModal({open:true,movie})} className="rounded-lg p-2 text-gray-500 hover:bg-error-50 hover:text-error-500 dark:hover:bg-error-500/10 transition-colors">
-                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                    </button>
+                    )}
+                    {/* Cinema Manager: chỉ xem, không có thao tác */}
+                    {!isSuperAdmin && (
+                      <span className="px-2 text-xs text-gray-400 italic">Chỉ xem</span>
+                    )}
                   </div>
                 </Table.Cell>
               </Table.Row>

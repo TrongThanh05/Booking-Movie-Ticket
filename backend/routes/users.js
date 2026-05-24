@@ -1,8 +1,10 @@
 import express from 'express';
 import User    from '../models/User.js';
 import Theater from '../models/Theater.js';
+import Booking from '../models/Booking.js';
+import Show    from '../models/Show.js';
 import jwt     from 'jsonwebtoken';
-import authMiddleware, { adminMiddleware, requireSuperAdmin } from '../middleware/auth.js';
+import authMiddleware, { adminMiddleware, requireSuperAdmin, optionalAdminAuth } from '../middleware/auth.js';
 import { paginate } from '../utils/paginate.js';
 
 const router = express.Router();
@@ -39,10 +41,27 @@ const publicFields = (user) => ({
   theater_id: user.theater_id || null,
 });
 
-// ── GET /api/users — Danh sách tất cả user (admin, có phân trang) ────────────
-router.get('/', adminMiddleware, async (req, res) => {
+// ── GET /api/users — Danh sách user (admin) ─────────────────────────────────────────────
+// Phân quyền:
+//   Super-admin    → toàn bộ user (role='user')
+//   Cinema Manager → chỉ khách hàng đã mua vé tại rạp của mình
+// ───────────────────────────────────────────────────────────────────────────────────
+router.get('/', adminMiddleware, optionalAdminAuth, async (req, res) => {
   try {
-    const result = await paginate(User, {}, req.query, {
+    let baseFilter = { role: 'user' }; // luôn chỉ lấy user thường
+
+    // ── Cinema Manager scope ──────────────────────────────────────────────
+    if (req.user?.theater_id) { // req.user gắn bởi adminMiddleware
+      // 1. Lấy tất cả show_id thuộc rạp
+      const showIds = await Show.find({ cinema: req.user.theater_id })
+        .distinct('_id');
+      // 2. Lấy tất cả user_id đã mua vé tại các show đó
+      const userIds = await Booking.find({ show: { $in: showIds } })
+        .distinct('user');
+      baseFilter._id = { $in: userIds };
+    }
+
+    const result = await paginate(User, baseFilter, req.query, {
       defaultSort: { createdAt: -1 },
       searchFields: ['name', 'email', 'phone'],
       select: '-password',

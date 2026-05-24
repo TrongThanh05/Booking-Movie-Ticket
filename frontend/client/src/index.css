@@ -413,8 +413,22 @@ body{
    LIGHT MODE OVERRIDES — kích hoạt khi <html> có class "light"
    ══════════════════════════════════════════════════════════════════════════════ */
 
-html {
-  transition: background-color 0.5s ease, color 0.5s ease;
+/* ── Smooth theme transition ───────────────────────────────────────────────
+   Class được thêm vào <html> CHỈ trong lúc đổi theme (khoảng 400ms),
+   sau đó bị xóa ngay để không làm chậm hover/animation thường ngày.
+   ──────────────────────────────────────────────────────────────────────── */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 0.4s ease,
+    color            0.4s ease,
+    border-color     0.4s ease,
+    fill             0.4s ease,
+    stroke           0.4s ease,
+    opacity          0.2s ease !important;
+  /* Loại trừ transform/width/height để không làm lag layout animations */
 }
 
 /* Nền toàn trang */
@@ -571,3 +585,96 @@ html.light button.bg-white\/5:hover {
 html.light .text-gray-500 {
   color: #64748b !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SEAT LAYOUT PAGE (movies/book) — Light Mode Overrides
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Utility: trắng ở dark mode, đậm ở light mode */
+.text-adaptive { color: #ffffff; }
+html.light .text-adaptive { color: #0f172a !important; }
+
+/* Pricing info cards trong seat map */
+html.light .bg-gray-800\/50 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1) !important;
+}
+html.light .bg-yellow-800\/50 {
+  background-color: rgba(255, 251, 235, 0.95) !important;
+}
+html.light .bg-pink-800\/50 {
+  background-color: rgba(253, 242, 248, 0.95) !important;
+}
+
+/* VIP/Couple seat text contrast on light backgrounds */
+html.light .text-yellow-300 { color: #78350f !important; } /* amber-900 */
+html.light .text-pink-300   { color: #831843 !important; } /* pink-900 */
+
+/* Confirm step & sidebar divider border */
+html.light .border-gray-600 { border-color: rgba(0, 0, 0, 0.15) !important; }
+
+/* "Quay lại" button (bg-gray-600) */
+html.light button.bg-gray-600 {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+html.light button.hover\:bg-gray-700:hover {
+  background-color: #cbd5e1 !important;
+}
+
+/* Disabled "Chọn ghế" button */
+html.light button:disabled {
+  background-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+}
+
+/* "Lịch sử vé" outline button trên success screen */
+html.light button.border.border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #334155 !important;
+}
+html.light button.hover\:border-white\/40:hover {
+  border-color: rgba(0, 0, 0, 0.35) !important;
+  color: #0f172a !important;
+}
+
+/* Perforated divider circles trên ticket success */
+html.light .bg-gray-900.border.border-white\/10 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Green payment button */
+html.light button.bg-green-500,
+html.light button.bg-green-600 {
+  color: #ffffff !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MY BOOKING PAGE — Light Mode Overrides
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Status badge text: đủ tương phản trên nền pastel */
+html.light .text-green-300 { color: #166534 !important; } /* green-900 */
+html.light .text-red-300   { color: #991b1b !important; } /* red-800   */
+html.light .text-blue-300  { color: #1e3a8a !important; } /* blue-900  */
+
+/* Status badge background: nhẹ hơn, phù hợp light mode */
+html.light .bg-green-500\/20 { background-color: rgba(220, 252, 231, 0.9) !important; } /* green-100 */
+html.light .bg-red-500\/20   { background-color: rgba(254, 226, 226, 0.9) !important; } /* red-100   */
+html.light .bg-blue-500\/20  { background-color: rgba(219, 234, 254, 0.9) !important; } /* blue-100  */
+html.light .bg-gray-500\/20  { background-color: rgba(243, 244, 246, 0.9) !important; } /* gray-100  */
+
+/* Yellow action button (đánh giá) */
+html.light .text-yellow-300  { color: #78350f !important; }
+html.light .bg-yellow-500\/20 { background-color: rgba(254, 243, 199, 0.9) !important; }
+html.light .bg-yellow-500\/30:hover { background-color: rgba(253, 230, 138, 0.9) !important; }
+
+/* QR button active state */
+html.light .text-red-400 { color: #b91c1c !important; }
+
+/* Detail panel border */
+html.light .border-white\/10 { border-color: rgba(0, 0, 0, 0.08) !important; }
+
+/* Detail modal overlay (nếu dùng) */
+html.light .bg-black\/60 { background-color: rgba(0, 0, 0, 0.45) !important; }

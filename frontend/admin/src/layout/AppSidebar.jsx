@@ -1,13 +1,16 @@
 /**
  * AppSidebar.jsx — Navigation sidebar (collapsible)
  *
- * Menu groups tương ứng 8 mục quản trị:
- *   📊 Dashboard, 🎬 Phim, 🏢 Rạp/Phòng, 📅 Lịch chiếu
- *   🎟️ Đơn hàng, 👥 Khách hàng, 🎁 Khuyến mãi, ⚙️ Cài đặt
+ * Cinema Manager thấy ĐẦY ĐỦ menu như Super-admin,
+ * nhưng data trong mỗi trang đã được scope phía backend.
+ *
+ * Chỉ khác biệt về UI:
+ *   - Subtitle dưới logo: "Quản lý rạp" thay vì "Quản trị hệ thống"
  */
 import { useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
+import { useAuth } from '../lib/useAuth';
 import {
   GridIcon,
   VideoIcon,
@@ -24,18 +27,18 @@ const menuSections = [
   {
     title: 'QUẢN LÝ CHÍNH',
     items: [
-      { label: 'Dashboard',    icon: GridIcon,    path: '/admin' },
-      { label: 'Quản lý Phim', icon: VideoIcon,   path: '/admin/movies' },
-      { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon, path: '/admin/theaters' },
-      { label: 'Lịch Chiếu',   icon: CalenderIcon, path: '/admin/shows' },
+      { label: 'Dashboard',        icon: GridIcon,      path: '/admin' },
+      { label: 'Quản lý Phim',     icon: VideoIcon,     path: '/admin/movies' },
+      { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon,   path: '/admin/theaters' },
+      { label: 'Lịch Chiếu',       icon: CalenderIcon,  path: '/admin/shows' },
     ],
   },
   {
     title: 'VẬN HÀNH',
     items: [
-      { label: 'Đơn hàng / Vé', icon: ListIcon, path: '/admin/bookings' },
-      { label: 'Khách hàng',   icon: GroupIcon,    path: '/admin/users' },
-      { label: 'Khuyến mãi',   icon: DollarLineIcon, path: '/admin/vouchers' },
+      { label: 'Đơn hàng / Vé', icon: ListIcon,       path: '/admin/bookings' },
+      { label: 'Khách hàng',    icon: GroupIcon,       path: '/admin/users' },
+      { label: 'Khuyến mãi',   icon: DollarLineIcon,  path: '/admin/vouchers' },
     ],
   },
   {
@@ -48,6 +51,7 @@ const menuSections = [
 
 const AppSidebar = () => {
   const { isExpanded, isMobileOpen, isMobile, setIsMobileOpen } = useSidebar();
+  const { isSuperAdmin } = useAuth();
   const location = useLocation();
   const sidebarRef = useRef(null);
 
@@ -89,7 +93,10 @@ const AppSidebar = () => {
             <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
               CineAdmin
             </h1>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">Quản trị rạp phim</p>
+            {/* Subtitle thay đổi theo role để Cinema Manager biết rõ phạm vi */}
+            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+              {isSuperAdmin ? 'Quản trị hệ thống' : 'Quản lý rạp của tôi'}
+            </p>
           </div>
         )}
       </div>

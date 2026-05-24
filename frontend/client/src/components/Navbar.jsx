@@ -150,23 +150,34 @@ const Navbar = () => {
 
                   {/* Dropdown menu */}
                   {dropdownOpen && (
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-2 overflow-hidden
-                      animate-[menuIn_0.15s_ease-out]">
+                    <div className={`absolute right-0 top-full mt-2 w-56 rounded-2xl shadow-2xl py-2 overflow-hidden animate-[menuIn_0.15s_ease-out] border ${
+                      isDark
+                        ? 'bg-gray-900/95 backdrop-blur-xl border-white/10'
+                        : 'bg-white border-slate-200 shadow-slate-200/80'
+                    }`}>
                       {/* User info */}
-                      <div className="px-4 py-3 border-b border-white/10">
-                        <p className="text-white font-semibold text-sm truncate">{user.name}</p>
-                        <p className="text-gray-400 text-xs truncate">{user.email}</p>
+                      <div className={`px-4 py-3 border-b ${
+                        isDark ? 'border-white/10' : 'border-slate-100'
+                      }`}>
+                        <p className={`font-semibold text-sm truncate ${
+                          isDark ? 'text-white' : 'text-slate-900'
+                        }`}>{user.name}</p>
+                        <p className={`text-xs truncate ${
+                          isDark ? 'text-gray-400' : 'text-slate-500'
+                        }`}>{user.email}</p>
                       </div>
 
-                      <DropdownItem icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setDropdownOpen(false); }} />
-                      <DropdownItem icon={User} label="Hồ sơ cá nhân" onClick={() => { navigate('/profile'); setDropdownOpen(false); }} />
+                      <DropdownItem isDark={isDark} icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setDropdownOpen(false); }} />
+                      <DropdownItem isDark={isDark} icon={User} label="Hồ sơ cá nhân" onClick={() => { navigate('/profile'); setDropdownOpen(false); }} />
 
                       {isAdmin && (
-                        <DropdownItem icon={Shield} label="Quản trị" accent onClick={() => { navigate('/admin/dashboard'); setDropdownOpen(false); }} />
+                        <DropdownItem isDark={isDark} icon={Shield} label="Quản trị" accent onClick={() => { navigate('/admin/dashboard'); setDropdownOpen(false); }} />
                       )}
 
-                      <div className="border-t border-white/10 mt-2 pt-2">
-                        <DropdownItem icon={LogOut} label="Đăng xuất" danger onClick={handleLogout} />
+                      <div className={`border-t mt-2 pt-2 ${
+                        isDark ? 'border-white/10' : 'border-slate-100'
+                      }`}>
+                        <DropdownItem isDark={isDark} icon={LogOut} label="Đăng xuất" danger onClick={handleLogout} />
                       </div>
                     </div>
                   )}
@@ -186,14 +197,20 @@ const Navbar = () => {
         <div className={`md:hidden absolute top-full left-0 right-0 transition-all duration-300 ${
           isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3 pointer-events-none'
         }`}>
-          <div className="bg-black/95 backdrop-blur-xl border-t border-white/10 shadow-2xl">
+          <div className={`backdrop-blur-xl border-t shadow-2xl ${
+            isDark ? 'bg-black/95 border-white/10' : 'bg-white/98 border-slate-200'
+          }`}>
             <div className="px-4 py-6 space-y-1">
 
               {/* Mobile search */}
               <div className="mb-4 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input type="text" placeholder="Tìm kiếm phim..."
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-red-500 transition-colors" />
+                  className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:border-red-500 transition-colors ${
+                    isDark
+                      ? 'bg-white/10 border-white/20 text-white placeholder-gray-400'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                  }`} />
               </div>
 
               {navItems.map(({ name, path, icon: Icon }) => {
@@ -201,7 +218,11 @@ const Navbar = () => {
                 return (
                   <Link key={path} to={path} onClick={handleLinkClick}
                     className={`flex items-center gap-4 px-4 py-4 rounded-xl font-medium transition-all duration-300 ${
-                      active ? 'text-white bg-red-500/20 border border-red-500/30' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                      active
+                        ? 'text-red-700 bg-red-500/10 border border-red-500/20'
+                        : isDark
+                          ? 'text-gray-300 hover:text-white hover:bg-white/10'
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
                     }`}>
                     <Icon className="w-5 h-5" />
                     <span className="text-lg">{name}</span>
@@ -211,21 +232,25 @@ const Navbar = () => {
               })}
 
               {/* Mobile auth */}
-              <div className="pt-4 mt-4 border-t border-white/10">
+              <div className={`pt-4 mt-4 border-t ${
+                isDark ? 'border-white/10' : 'border-slate-200'
+              }`}>
                 {isLoggedIn ? (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl">
+                    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
+                      isDark ? 'bg-white/5' : 'bg-slate-50'
+                    }`}>
                       <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center text-white font-bold text-sm">
                         {initials}
                       </div>
                       <div>
-                        <p className="text-white font-medium">{user.name}</p>
-                        <p className="text-gray-400 text-sm">{user.email}</p>
+                        <p className={`font-medium ${ isDark ? 'text-white' : 'text-slate-900' }`}>{user.name}</p>
+                        <p className={`text-sm ${ isDark ? 'text-gray-400' : 'text-slate-500' }`}>{user.email}</p>
                       </div>
                     </div>
-                    <MobileItem icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setIsOpen(false); }} />
-                    {isAdmin && <MobileItem icon={Shield} label="Quản trị" onClick={() => { navigate('/admin/dashboard'); setIsOpen(false); }} />}
-                    <MobileItem icon={LogOut} label="Đăng xuất" danger onClick={() => { handleLogout(); setIsOpen(false); }} />
+                    <MobileItem isDark={isDark} icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setIsOpen(false); }} />
+                    {isAdmin && <MobileItem isDark={isDark} icon={Shield} label="Quản trị" onClick={() => { navigate('/admin/dashboard'); setIsOpen(false); }} />}
+                    <MobileItem isDark={isDark} icon={LogOut} label="Đăng xuất" danger onClick={() => { handleLogout(); setIsOpen(false); }} />
                   </div>
                 ) : (
                   <div className="flex gap-3">
@@ -260,22 +285,32 @@ const Navbar = () => {
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-const DropdownItem = ({ icon: Icon, label, onClick, danger, accent }) => (
+const DropdownItem = ({ icon: Icon, label, onClick, danger, accent, isDark }) => (
   <button onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors duration-150 ${
-      danger  ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300' :
-      accent  ? 'text-yellow-400 hover:bg-yellow-500/10' :
-                'text-gray-300 hover:text-white hover:bg-white/10'
+      danger
+        ? isDark
+          ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+          : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+        : accent
+          ? isDark
+            ? 'text-yellow-400 hover:bg-yellow-500/10'
+            : 'text-yellow-700 hover:bg-yellow-50'
+          : isDark
+            ? 'text-gray-300 hover:text-white hover:bg-white/10'
+            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
     }`}>
     <Icon className="w-4 h-4" />
     {label}
   </button>
 );
 
-const MobileItem = ({ icon: Icon, label, onClick, danger }) => (
+const MobileItem = ({ icon: Icon, label, onClick, danger, isDark }) => (
   <button onClick={onClick}
     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors duration-200 ${
-      danger ? 'text-red-400 hover:bg-red-500/10' : 'text-gray-300 hover:text-white hover:bg-white/10'
+      danger
+        ? isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+        : isDark ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
     }`}>
     <Icon className="w-5 h-5" />
     <span>{label}</span>
