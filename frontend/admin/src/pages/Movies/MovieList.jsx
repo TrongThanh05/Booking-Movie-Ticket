@@ -47,7 +47,12 @@ const MovieList = () => {
   const fetchMovies = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/movies', {
+      // API GET /movies/admin — private endpoint, yêu cầu token admin.
+      //   Super-admin  → tất cả phim (pagination + search)
+      //   Cinema Mgr   → chỉ phim đang chiếu tại rạp của mình (scope phía server)
+      //
+      // ⚠️  KHÔNG dùng GET /movies (public) — nó không scope theo token.
+      const r = await api.get('/movies/admin', {
         params: { page, limit, search: searchDebounced },
       });
       const res = r.data;

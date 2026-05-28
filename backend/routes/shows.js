@@ -1,8 +1,6 @@
 import express from 'express';
 import Show from '../models/Show.js';
 import Room from '../models/Room.js';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
 import { adminMiddleware } from '../middleware/auth.js';
 import { paginate } from '../utils/paginate.js';
 
@@ -49,25 +47,46 @@ const assertShowBelongsToTheater = async (showId, theaterScope) => {
 // CRUD CƠ BẢN
 // ============================================================
 
-// Get all shows (with pagination + optional theater scope)
+// ============================================================
+// GET /api/shows — PUBLIC endpoint: Luôn trả toàn bộ lịch chiếu
+//
+// ⚠️  KHÔNG đọc token. Public hoàn toàn.
+//     Dùng cho: Client booking flow, trang chọn suất chiếu.
+//     Vẫn hỗ trợ query params: ?cinema=id, ?date=..., ?movie=...
+// ============================================================
 router.get('/', async (req, res) => {
   try {
-    // ── Optional-auth: scope shows theo theater nếu là Cinema Manager ─────
-    let baseFilter = {};
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const decoded = jwt.verify(
-          authHeader.split(' ')[1],
-          process.env.JWT_SECRET || 'your-secret-key',
-        );
-        const user = await User.findById(decoded.id).select('role theater_id');
-        if (user?.role === 'admin' && user.theater_id) {
-          // Cinema Manager → chỉ trả shows thuộc rạp của mình
-          baseFilter = { cinema: user.theater_id };
-        }
-      } catch { /* token không hợp lệ → không scope */ }
-    }
+    const result = await paginate(Show, {}, req.query, {
+      defaultSort: { showDateTime: 1 },
+      populate: [
+        { path: 'movie',   select: 'title poster_path' },
+        { path: 'cinema',  select: 'name location' },
+        { path: 'room_id', select: 'name screen_type' },
+      ],
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ============================================================
+// GET /api/shows/admin — PRIVATE: Lấy lịch chiếu có RBAC
+//
+// ⚠️  PHẢI đặt TRƯỚC /by-date/:date và /:id.
+//
+// Phân quyền (yêu cầu adminMiddleware):
+//   • Super-admin    → tất cả lịch chiếu (có pagination + search)
+//   • Cinema Manager → CHỈ lịch chiếu thuộc rạp mình
+//
+// Dùng cho: Admin Dashboard > Quản lý Lịch Chiếu (ShowList.jsx)
+// ============================================================
+router.get('/admin', adminMiddleware, async (req, res) => {
+  try {
+    // Cinema Manager: scope về rạp của mình
+    const baseFilter = (req.isTheaterOwner && req.theaterScope)
+      ? { cinema: req.theaterScope }
+      : {};
 
     const result = await paginate(Show, baseFilter, req.query, {
       defaultSort: { showDateTime: 1 },
@@ -82,6 +101,7 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 // Get shows by date
 router.get('/by-date/:date', async (req, res) => {

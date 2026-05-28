@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import timeFormat from '../lib/timeFormat';
 import NewReleaseTag from './NewReleaseTag';
+import ComingSoonTag from './ComingSoonTag';
 
 const MovieCard = ({ movie, viewMode = 'grid', onRemove }) => {
   const navigate = useNavigate();
@@ -20,13 +21,18 @@ const MovieCard = ({ movie, viewMode = 'grid', onRemove }) => {
     return diffDays >= 0 && diffDays <= 30;
   })();
 
+  // Hiển thị tag "Sắp Chiếu" nếu status là coming_soon
+  const isComingSoon = movie.status === 'coming_soon';
+  const isNowShowing = movie.status === 'now_showing';
+
   const isList = viewMode === 'list';
 
   /* ─── LIST MODE ─────────────────────────────────────────────────────────── */
   if (isList) {
     return (
       <div className="relative flex flex-row w-full min-h-[12rem] bg-gray-800 rounded-xl overflow-hidden group border border-gray-700/50 shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300">
-        <NewReleaseTag show={isNewRelease} />
+        <ComingSoonTag show={isComingSoon} />
+        <NewReleaseTag show={isNowShowing && isNewRelease} />
 
         {/* Backdrop landscape */}
         <div className="relative w-64 flex-shrink-0 overflow-hidden">
@@ -87,7 +93,8 @@ const MovieCard = ({ movie, viewMode = 'grid', onRemove }) => {
   /* ─── GRID MODE (bản gốc) ────────────────────────────────────────────── */
   return (
     <div className="relative flex flex-col h-full p-4 bg-gray-800 rounded-xl hover:-translate-y-2 transition-all duration-300 w-64 shadow-xl hover:shadow-2xl overflow-hidden group border border-gray-700/50">
-      <NewReleaseTag show={isNewRelease} />
+      <ComingSoonTag show={isComingSoon} />
+      <NewReleaseTag show={isNowShowing && isNewRelease} />
 
       <img
         onClick={handleCardClick}

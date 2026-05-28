@@ -43,10 +43,14 @@ const TheaterList = () => {
   const fetchTheaters = useCallback(async () => {
     setLoading(true);
     try {
-      // API GET /theaters tự động scope theo token:
-      //   Super-admin  → trả tất cả (có phân trang + search)
-      //   Cinema Mgr   → trả chỉ rạp của mình (1 item)
-      const r = await api.get('/theaters', {
+      // API GET /theaters/admin — private endpoint, yêu cầu token admin.
+      //   Super-admin  → trả tất cả rạp (có phân trang + search)
+      //   Cinema Mgr   → trả chỉ rạp của mình (1 item, đã scope phía server)
+      //
+      // ⚠️  KHÔNG dùng GET /theaters (public endpoint) ở đây vì:
+      //   - /theaters không cần token → luôn trả full list
+      //   - Admin cần RBAC scoping → phải dùng /theaters/admin
+      const r = await api.get('/theaters/admin', {
         params: { page, limit, search: searchDebounced },
       });
       const res = r.data;

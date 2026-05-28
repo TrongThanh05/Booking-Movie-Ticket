@@ -17,10 +17,10 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import User from '../models/User.js';
 import Movie from '../models/Movie.js';
-import Cinema from '../models/Cinema.js';
+import Theater from '../models/Theater.js';
 import Room from '../models/Room.js';
 import Show from '../models/Show.js';
-import Booking from '../models/Booking.js';
+import Booking, { generateUniqueBookingCode } from '../models/Booking.js';
 import Favorite from '../models/Favorite.js';
 
 dotenv.config();
@@ -490,7 +490,7 @@ const seedDatabase = async () => {
     await Promise.all([
       User.deleteMany({}),
       Movie.deleteMany({}),
-      Cinema.deleteMany({}),
+      Theater.deleteMany({}),
       Room.deleteMany({}),
       Show.deleteMany({}),
       Booking.deleteMany({}),
@@ -507,10 +507,10 @@ const seedDatabase = async () => {
     const movies = await Movie.create(moviesData);
     console.log(`   ✔ Created ${movies.length} movies`);
 
-    // 4. Tạo Cinemas
-    console.log('🏢 Creating cinemas...');
-    const cinemas = await Cinema.create(cinemasData);
-    console.log(`   ✔ Created ${cinemas.length} cinemas`);
+    // 4. Tạo Theaters
+    console.log('🏢 Creating theaters...');
+    const cinemas = await Theater.create(cinemasData);
+    console.log(`   ✔ Created ${cinemas.length} theaters`);
 
     // 5. Tạo Rooms — đa dạng cho mỗi rạp
     console.log('🚪 Creating rooms...');
@@ -633,22 +633,14 @@ const seedDatabase = async () => {
     // Booking 1: User An đặt 2 vé VIP
     if (todayShows.length > 0) {
       const show1 = todayShows[0];
-      await Show.updateOne(
-        { _id: show1._id },
-        {
-          $push: {
-            reserved_seats: {
-              $each: [
-                { seat_id: 'F5', user_id: users[0]._id, status: 'paid', hold_until: null },
-                { seat_id: 'F6', user_id: users[0]._id, status: 'paid', hold_until: null },
-              ],
-            },
-          },
-        },
-      );
+      const code1 = await generateUniqueBookingCode();
+      await Show.findByIdAndUpdate(show1._id, {
+        $addToSet: { booked_seats: { $each: ['F5', 'F6'] } },
+      });
       await Booking.create({
         user: users[0]._id,
         show: show1._id,
+        booking_code: code1,
         tickets: [
           { seat_id: 'F5', seat_type: 'vip', price: 135000 },
           { seat_id: 'F6', seat_type: 'vip', price: 135000 },
@@ -656,6 +648,7 @@ const seedDatabase = async () => {
         total_amount: 270000,
         status: 'confirmed',
         payment_method: 'VNPAY',
+        payment_status: 'paid',
       });
       bookingCount++;
     }
@@ -663,23 +656,14 @@ const seedDatabase = async () => {
     // Booking 2: User Bình đặt 3 vé Regular
     if (todayShows.length > 1) {
       const show2 = todayShows[1];
-      await Show.updateOne(
-        { _id: show2._id },
-        {
-          $push: {
-            reserved_seats: {
-              $each: [
-                { seat_id: 'B3', user_id: users[1]._id, status: 'paid', hold_until: null },
-                { seat_id: 'B4', user_id: users[1]._id, status: 'paid', hold_until: null },
-                { seat_id: 'B5', user_id: users[1]._id, status: 'paid', hold_until: null },
-              ],
-            },
-          },
-        },
-      );
+      const code2 = await generateUniqueBookingCode();
+      await Show.findByIdAndUpdate(show2._id, {
+        $addToSet: { booked_seats: { $each: ['B3', 'B4', 'B5'] } },
+      });
       await Booking.create({
         user: users[1]._id,
         show: show2._id,
+        booking_code: code2,
         tickets: [
           { seat_id: 'B3', seat_type: 'regular', price: 85000 },
           { seat_id: 'B4', seat_type: 'regular', price: 85000 },
@@ -688,6 +672,7 @@ const seedDatabase = async () => {
         total_amount: 255000,
         status: 'confirmed',
         payment_method: 'Momo',
+        payment_status: 'paid',
       });
       bookingCount++;
     }
@@ -695,22 +680,14 @@ const seedDatabase = async () => {
     // Booking 3: User Cường đặt 2 vé Couple
     if (todayShows.length > 2) {
       const show3 = todayShows[2];
-      await Show.updateOne(
-        { _id: show3._id },
-        {
-          $push: {
-            reserved_seats: {
-              $each: [
-                { seat_id: 'I7', user_id: users[2]._id, status: 'paid', hold_until: null },
-                { seat_id: 'I8', user_id: users[2]._id, status: 'paid', hold_until: null },
-              ],
-            },
-          },
-        },
-      );
+      const code3 = await generateUniqueBookingCode();
+      await Show.findByIdAndUpdate(show3._id, {
+        $addToSet: { booked_seats: { $each: ['I7', 'I8'] } },
+      });
       await Booking.create({
         user: users[2]._id,
         show: show3._id,
+        booking_code: code3,
         tickets: [
           { seat_id: 'I7', seat_type: 'couple', price: 170000 },
           { seat_id: 'I8', seat_type: 'couple', price: 170000 },
@@ -718,6 +695,7 @@ const seedDatabase = async () => {
         total_amount: 340000,
         status: 'confirmed',
         payment_method: 'ZaloPay',
+        payment_status: 'paid',
       });
       bookingCount++;
     }
@@ -725,27 +703,21 @@ const seedDatabase = async () => {
     // Booking 4: User Duyên đặt 1 vé VIP
     if (todayShows.length > 3) {
       const show4 = todayShows[3];
-      await Show.updateOne(
-        { _id: show4._id },
-        {
-          $push: {
-            reserved_seats: {
-              $each: [
-                { seat_id: 'G10', user_id: users[3]._id, status: 'paid', hold_until: null },
-              ],
-            },
-          },
-        },
-      );
+      const code4 = await generateUniqueBookingCode();
+      await Show.findByIdAndUpdate(show4._id, {
+        $addToSet: { booked_seats: { $each: ['G10'] } },
+      });
       await Booking.create({
         user: users[3]._id,
         show: show4._id,
+        booking_code: code4,
         tickets: [
           { seat_id: 'G10', seat_type: 'vip', price: 127500 },
         ],
         total_amount: 127500,
         status: 'confirmed',
         payment_method: 'VNPAY',
+        payment_status: 'paid',
       });
       bookingCount++;
     }
@@ -753,9 +725,11 @@ const seedDatabase = async () => {
     // Booking 5: User Đức đặt 4 vé Regular (đã cancelled)
     if (todayShows.length > 4) {
       const show5 = todayShows[4];
+      const code5 = await generateUniqueBookingCode();
       await Booking.create({
         user: users[4]._id,
         show: show5._id,
+        booking_code: code5,
         tickets: [
           { seat_id: 'A1', seat_type: 'regular', price: 85000 },
           { seat_id: 'A2', seat_type: 'regular', price: 85000 },
@@ -765,6 +739,7 @@ const seedDatabase = async () => {
         total_amount: 340000,
         status: 'cancelled',
         payment_method: 'Momo',
+        payment_status: 'failed',
         cancelled_at: new Date(),
       });
       bookingCount++;
@@ -773,22 +748,14 @@ const seedDatabase = async () => {
     // Booking 6: User Linh đặt 2 vé VIP (completed)
     if (todayShows.length > 5) {
       const show6 = todayShows[5];
-      await Show.updateOne(
-        { _id: show6._id },
-        {
-          $push: {
-            reserved_seats: {
-              $each: [
-                { seat_id: 'H3', user_id: users[5]._id, status: 'paid', hold_until: null },
-                { seat_id: 'H4', user_id: users[5]._id, status: 'paid', hold_until: null },
-              ],
-            },
-          },
-        },
-      );
+      const code6 = await generateUniqueBookingCode();
+      await Show.findByIdAndUpdate(show6._id, {
+        $addToSet: { booked_seats: { $each: ['H3', 'H4'] } },
+      });
       await Booking.create({
         user: users[5]._id,
         show: show6._id,
+        booking_code: code6,
         tickets: [
           { seat_id: 'H3', seat_type: 'vip', price: 127500 },
           { seat_id: 'H4', seat_type: 'vip', price: 127500 },
@@ -796,6 +763,7 @@ const seedDatabase = async () => {
         total_amount: 255000,
         status: 'completed',
         payment_method: 'ZaloPay',
+        payment_status: 'paid',
       });
       bookingCount++;
     }
@@ -830,7 +798,7 @@ const seedDatabase = async () => {
     console.log('═══════════════════════════════════════════════');
     console.log(`  👤 Users:      ${users.length}`);
     console.log(`  🎬 Movies:     ${movies.length}`);
-    console.log(`  🏢 Cinemas:    ${cinemas.length}`);
+    console.log(`  🏢 Theaters:   ${cinemas.length}`);
     console.log(`  🚪 Rooms:      ${rooms.length}`);
     console.log(`  📅 Shows:      ${shows.length}`);
     console.log(`  🎫 Bookings:   ${bookingCount}`);

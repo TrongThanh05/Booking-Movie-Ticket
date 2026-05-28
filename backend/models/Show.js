@@ -42,6 +42,7 @@ const showSchema = new mongoose.Schema(
     },
 
     showDateTime: { type: Date, required: true },
+    endDateTime:  { type: Date },                   // Giờ kết thúc (tự động tính)
     base_price:   { type: Number, required: true }, // Giá gốc (VND)
     duration:     { type: Number },                 // phút
     language:     { type: String, default: 'Phụ đề Việt' },
@@ -87,6 +88,49 @@ showSchema.index({ cinema: 1, showDateTime: 1 });
 
 // Kiểm tra ghế đã đặt nhanh (nếu dùng $elemMatch)
 showSchema.index({ booked_seats: 1 });
+
+// Sắp xếp theo thời gian kết thúc
+showSchema.index({ endDateTime: 1 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Pre-save hook: Tự động tính endDateTime và kiểm tra trùng lịch phòng chiếu
+// ──────────────────────────────────────────────────────────────────────────────
+showSchema.pre('save', async function (next) {
+  if (this.duration && this.showDateTime) {
+    // endDateTime = showDateTime + duration (phút)
+    this.endDateTime = new Date(this.showDateTime.getTime() + this.duration * 60000);
+  }
+
+  // Kiểm tra trùng lịch phòng chiếu
+  if (this.room_id && this.showDateTime && this.endDateTime) {
+    try {
+      const overlap = await mongoose.model('Show').findOne({
+        _id: { $ne: this._id }, // loại trừ suất chiếu hiện tại
+        room_id: this.room_id,
+        is_active: true,
+        $or: [
+          // 1. Suất chiếu khác bắt đầu trong lúc suất chiếu này đang chiếu
+          { showDateTime: { $lt: this.endDateTime, $gte: this.showDateTime } },
+          // 2. Suất chiếu khác kết thúc trong lúc suất chiếu này đang chiếu
+          { endDateTime: { $gt: this.showDateTime, $lte: this.endDateTime } },
+          // 3. Suất chiếu khác bao trọn hoàn toàn suất chiếu này
+          { showDateTime: { $lte: this.showDateTime }, endDateTime: { $gte: this.endDateTime } },
+        ],
+      });
+
+      if (overlap) {
+        return next(
+          new Error(
+            `Trùng lịch chiếu! Phòng chiếu này đã được xếp lịch chiếu phim khác trong khoảng thời gian từ ${overlap.showDateTime.toLocaleTimeString('vi-VN')} đến ${overlap.endDateTime.toLocaleTimeString('vi-VN')}.`
+          )
+        );
+      }
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
 const Show = mongoose.model('Show', showSchema);
 

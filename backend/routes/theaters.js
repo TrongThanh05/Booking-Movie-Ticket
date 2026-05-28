@@ -11,56 +11,57 @@ import { paginate } from '../utils/paginate.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/theaters — Lấy danh sách rạp (có phân quyền)
+// GET /api/theaters — PUBLIC endpoint: Luôn trả toàn bộ rạp
 //
-// Phân quyền:
-//   • Public (client)   → gọi không cần token, lấy toàn bộ (dùng cho trang chọn rạp)
-//   • Super-admin       → trả toàn bộ (không filter)
-//   • Cinema Manager    → CHỈ trả về đúng rạp mình quản lý
-//
-// Cách phân biệt: nếu có token hợp lệ và role === 'admin' thì áp dụng RBAC;
-// không có token thì trả full list (dành cho client public).
+// ⚠️  KHÔNG đọc token ở đây. Endpoint này là public hoàn toàn.
+//     Bất kỳ ai (kể cả Cinema Manager đang đăng nhập) gọi vào đây
+//     cũng nhận được toàn bộ danh sách rạp.
+//     Dùng cho: trang chủ client, trang chọn rạp, booking flow.
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    // ── Kiểm tra xem có token admin không (optional auth) ──────────────────
-    let isAdmin        = false;
-    let isTheaterOwner = false;
-    let theaterScope   = null;
+    const result = await paginate(Theater, {}, req.query, {
+      defaultSort: { createdAt: -1 },
+      searchFields: ['name', 'location', 'address'],
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const jwt     = (await import('jsonwebtoken')).default;
-        const User    = (await import('../models/User.js')).default;
-        const decoded = jwt.verify(
-          authHeader.split(' ')[1],
-          process.env.JWT_SECRET || 'your-secret-key',
-        );
-        const user = await User.findById(decoded.id).select('role theater_id');
-        if (user?.role === 'admin') {
-          isAdmin        = true;
-          isTheaterOwner = Boolean(user.theater_id);
-          theaterScope   = user.theater_id || null;
-        }
-      } catch { /* token không hợp lệ → xử lý như public */ }
-    }
-
-    // ── Cinema Manager: chỉ trả về rạp của mình ───────────────────────────
-    if (isAdmin && isTheaterOwner && theaterScope) {
-      const theater = await Theater.findById(theaterScope);
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/theaters/admin — PRIVATE endpoint: Lấy rạp có RBAC
+//
+// ⚠️  PHẢI đặt TRƯỚC /:id để Express không nhầm 'admin' là một ID.
+//
+// Phân quyền (yêu cầu adminMiddleware):
+//   • Super-admin (theater_id = null) → trả toàn bộ rạp (pagination + search)
+//   • Cinema Manager (theater_id ≠ null) → CHỈ trả đúng 1 rạp mình quản lý
+//
+// Dùng cho: Admin Dashboard > Quản lý Cụm Rạp (TheaterList.jsx)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/admin', adminMiddleware, async (req, res) => {
+  try {
+    // ── Cinema Manager: scope về rạp của mình ─────────────────────────────
+    if (req.isTheaterOwner && req.theaterScope) {
+      const theater = await Theater.findById(req.theaterScope);
       if (!theater) {
-        return res.status(404).json({ message: 'Không tìm thấy rạp được gán cho tài khoản này' });
+        return res.status(404).json({
+          message: 'Không tìm thấy rạp được gán cho tài khoản này',
+        });
       }
-      // Trả về dạng paginated để frontend không phải xử lý 2 kiểu response
+      // Trả dạng paginated để AdminList không phải xử lý 2 kiểu response
       return res.json({
         data: [theater],
-        pagination: { currentPage: 1, totalPages: 1, totalItems: 1, limit: 1,
-          hasNextPage: false, hasPrevPage: false },
+        pagination: {
+          currentPage: 1, totalPages: 1, totalItems: 1, limit: 1,
+          hasNextPage: false, hasPrevPage: false,
+        },
       });
     }
 
-    // ── Super-admin hoặc Public: trả toàn bộ (có pagination + search) ─────
+    // ── Super-admin: trả toàn bộ (pagination + search) ────────────────────
     const result = await paginate(Theater, {}, req.query, {
       defaultSort: { createdAt: -1 },
       searchFields: ['name', 'location', 'address'],

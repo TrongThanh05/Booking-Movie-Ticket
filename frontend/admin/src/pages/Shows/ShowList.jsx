@@ -37,10 +37,12 @@ const ShowList = () => {
   const fetchShows = useCallback(async () => {
     setLoading(true);
     try {
-      // API GET /shows tự scope theo token:
-      //   Super-admin  → trả tất cả
-      //   Cinema Mgr   → trả chỉ shows của rạp mình (server-side filter)
-      const r = await api.get('/shows', {
+      // API GET /shows/admin — private endpoint, yêu cầu token admin.
+      //   Super-admin  → tất cả lịch chiếu (pagination + search)
+      //   Cinema Mgr   → chỉ lịch chiếu rạp của mình (scope phía server)
+      //
+      // ⚠️  KHÔNG dùng GET /shows (public) — nó không scope theo token.
+      const r = await api.get('/shows/admin', {
         params: { page, limit, search: searchDebounced },
       });
       const res = r.data;

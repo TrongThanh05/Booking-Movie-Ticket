@@ -193,8 +193,7 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile menu */}
-        <div className={`md:hidden absolute top-full left-0 right-0 transition-all duration-300 ${
+        {/* Mobile menu */}        <div className={`md:hidden absolute top-full left-0 right-0 transition-all duration-300 ${
           isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3 pointer-events-none'
         }`}>
           <div className={`backdrop-blur-xl border-t shadow-2xl ${
@@ -249,7 +248,7 @@ const Navbar = () => {
                       </div>
                     </div>
                     <MobileItem isDark={isDark} icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setIsOpen(false); }} />
-                    {isAdmin && <MobileItem isDark={isDark} icon={Shield} label="Quản trị" onClick={() => { navigate('/admin/dashboard'); setIsOpen(false); }} />}
+                    {isAdmin && <MobileItem isDark={isDark} icon={Shield} label="Quản trị" onClick={() => { navigate('/admin'); setIsOpen(false); }} />}
                     <MobileItem isDark={isDark} icon={LogOut} label="Đăng xuất" danger onClick={() => { handleLogout(); setIsOpen(false); }} />
                   </div>
                 ) : (

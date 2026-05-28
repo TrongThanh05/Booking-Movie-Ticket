@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
+import { Clock as ClockIcon } from 'lucide-react';
 import {
   Star,
   Clock,
@@ -37,7 +38,19 @@ const MovieDetail = () => {
   const [showsLoading, setShowsLoading] = useState(false);
   const [showTrailerControls, setShowTrailerControls] = useState(true);
   const [trailerLoading, setTrailerLoading] = useState(false);
+  const [showComingSoonToast, setShowComingSoonToast] = useState(false);
   const trailerControlsTimeout = useRef(null);
+  const comingSoonToastTimeout = useRef(null);
+
+  // Kiểm tra phim sắp chiếu
+  const isComingSoon = movie?.status === 'coming_soon';
+
+  // Handler nút Đặt Vé khi phim coming_soon
+  const handleComingSoonClick = () => {
+    setShowComingSoonToast(true);
+    if (comingSoonToastTimeout.current) clearTimeout(comingSoonToastTimeout.current);
+    comingSoonToastTimeout.current = setTimeout(() => setShowComingSoonToast(false), 3500);
+  };
   const trailerSectionRef = useRef(null);
 
   const {
@@ -291,21 +304,33 @@ const MovieDetail = () => {
                 {movie.overview || 'Chưa có mô tả chi tiết cho phim này.'}
               </p>
               <div className="flex flex-wrap gap-4">
-                <button
-                  onClick={() => {
-                    const firstShow = shows.length > 0 ? shows[0] : null;
-                    if (firstShow) {
-                      navigate(`/movies/book/${movie._id}/${firstShow._id}`);
-                    } else {
-                      alert(
-                        'Chưa có suất chiếu khả dụng cho ngày này. Vui lòng chọn ngày khác.',
-                      );
-                    }
-                  }}
-                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
-                >
-                  <Ticket className="w-5 h-5" /> Đặt Vé Ngay
-                </button>
+                {/* ── Nút Đặt Vé: disabled nếu phim coming_soon ── */}
+                {isComingSoon ? (
+                  <button
+                    onClick={handleComingSoonClick}
+                    className="px-6 py-3 bg-gray-600 text-gray-300 rounded-full shadow-md flex items-center gap-2 cursor-not-allowed opacity-70 select-none"
+                    aria-disabled="true"
+                    title="Phim chưa được chiếu"
+                  >
+                    <ClockIcon className="w-5 h-5" /> Sắp Chiếu
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      const firstShow = shows.length > 0 ? shows[0] : null;
+                      if (firstShow) {
+                        navigate(`/movies/book/${movie._id}/${firstShow._id}`);
+                      } else {
+                        alert(
+                          'Chưa có suất chiếu khả dụng cho ngày này. Vui lòng chọn ngày khác.',
+                        );
+                      }
+                    }}
+                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2"
+                  >
+                    <Ticket className="w-5 h-5" /> Đặt Vé Ngay
+                  </button>
+                )}
                 <button
                   onClick={() => trailerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   className={`px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
@@ -334,6 +359,21 @@ const MovieDetail = () => {
                   {isFavorite ? 'Bỏ yêu thích' : 'Yêu thích'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Toast thông báo sắp chiếu ── */}
+        <div
+          className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ${
+            showComingSoonToast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+          }`}
+        >
+          <div className="flex items-center gap-3 bg-indigo-600 text-white px-6 py-4 rounded-2xl shadow-2xl border border-indigo-400/30 backdrop-blur-sm">
+            <ClockIcon className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">Phim chưa được chiếu</p>
+              <p className="text-xs text-indigo-200 mt-0.5">Vui lòng quay lại sau khi phim ra mắt chính thức.</p>
             </div>
           </div>
         </div>
@@ -394,8 +434,31 @@ const MovieDetail = () => {
             </div>
           </div>
 
-          {/* Showtimes — real data grouped by cinema */}
-          {selectedDate && (
+          {/* Showtimes — real data grouped by cinema hoặc Coming Soon banner */}
+          {isComingSoon ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              {/* Animated icon */}
+              <div className="relative mb-6">
+                <div className="w-24 h-24 rounded-full bg-indigo-500/10 border-2 border-indigo-500/30 flex items-center justify-center animate-pulse">
+                  <ClockIcon className="w-12 h-12 text-indigo-400" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full border-2 border-gray-900 animate-bounce" />
+              </div>
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-white mb-2">Phim Sắp Chiếu</h3>
+              <p className="text-gray-400 max-w-sm">
+                <strong className="text-indigo-300">{movie.title}</strong> hiện chưa có lịch chiếu.
+                Ngày ra mắt dự kiến:{' '}
+                <span className="text-white font-medium">
+                  {new Date(movie.release_date).toLocaleDateString('vi-VN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </span>
+              </p>
+              {/* Reminder note */}
+              <div className="mt-6 px-5 py-3 bg-indigo-500/10 border border-indigo-500/25 rounded-xl text-sm text-indigo-300">
+                🔔 Hãy theo dõi để nhận thông báo khi vé được mở bán!
+              </div>
+            </div>
+          ) : selectedDate && (
             <div>
               <h3 className={`text-lg font-semibold mb-4 ${ isDark ? 'text-white' : 'text-slate-800' }`}>
                 Suất chiếu ngày {formatDateVietnamese(selectedDate).day}{' '}

@@ -4,13 +4,34 @@ import axios from 'axios';
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Tạo axios instance
+// ─────────────────────────────────────────────────────────────────────────────
+// publicApi — Axios instance dành riêng cho các endpoint PUBLIC.
+//
+// ⚠️  Instance này KHÔNG BAO GIỜ gắn token Authorization.
+//     Dùng cho: GET /theaters, GET /movies (trang chủ client, booking flow).
+//
+// Lý do tách riêng: nếu dùng chung `api` (có auth interceptor), khi Cinema
+// Manager đang đăng nhập thì token của họ bị gắn vào request → backend sẽ
+// filter dữ liệu theo scope của manager → client chỉ thấy 1 rạp thay vì
+// toàn bộ hệ thống. Đây là nguồn gốc của bug.
+// ─────────────────────────────────────────────────────────────────────────────
+export const publicApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+  // Không có request interceptor → không bao giờ đính token
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// api — Axios instance dành cho các endpoint cần xác thực (PRIVATE).
+// Dùng cho: tạo booking, xem lịch sử đặt vé, yêu thích, profile...
+// ─────────────────────────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
 
 // Interceptor để thêm token vào mọi request
 api.interceptors.request.use((config) => {
@@ -47,16 +68,21 @@ api.interceptors.response.use(
 );
 
 // ========== MOVIES ==========
-export const getMovies = (params) => api.get('/movies', { params: { limit: 999, ...params } });
-export const getMovieById = (id) => api.get(`/movies/${id}`);
+// ⚠️  Dùng publicApi (không token) → backend trả toàn bộ phim
+export const getMovies    = (params) => publicApi.get('/movies', { params: { limit: 999, ...params } });
+export const getMovieById = (id)     => publicApi.get(`/movies/${id}`);
+// CUD vẫn dùng api (cần token admin)
 export const createMovie = (movieData) => api.post('/movies', movieData);
 export const updateMovie = (id, movieData) =>
   api.put(`/movies/${id}`, movieData);
 export const deleteMovie = (id) => api.delete(`/movies/${id}`);
 
 // ========== THEATERS ==========
-export const getTheaters = (params) => api.get('/theaters', { params: { limit: 999, ...params } });
-export const getTheaterById = (id) => api.get(`/theaters/${id}`);
+// getTheaters / getTheaterById → dùng publicApi (không token)
+//   → backend trả toàn bộ rạp dù ai đang đăng nhập
+export const getTheaters = (params) => publicApi.get('/theaters', { params: { limit: 999, ...params } });
+export const getTheaterById = (id) => publicApi.get(`/theaters/${id}`);
+// CUD operations vẫn cần token (user phải đăng nhập để đặt vé)
 export const createTheater = (theaterData) => api.post('/theaters', theaterData);
 export const updateTheater = (id, theaterData) =>
   api.put(`/theaters/${id}`, theaterData);
@@ -72,18 +98,19 @@ export const updateRoom    = (id, roomData) => api.put(`/rooms/${id}`, roomData)
 export const deleteRoom    = (id) => api.delete(`/rooms/${id}`);
 
 // ========== SHOWS ==========
-export const getShows = (params) => api.get('/shows', { params: { limit: 999, ...params } });
-export const getShowsByDate = (date) => api.get(`/shows/by-date/${date}`);
+// ⚠️  Dùng publicApi (không token) → backend trả toàn bộ lịch chiếu
+export const getShows         = (params) => publicApi.get('/shows', { params: { limit: 999, ...params } });
+export const getShowsByDate   = (date)   => publicApi.get(`/shows/by-date/${date}`);
 export const getShowsByTheater = (theaterId, date) =>
-  api.get('/shows', {
+  publicApi.get('/shows', {
     params: {
       ...(theaterId ? { cinema: theaterId } : {}),
       ...(date ? { date } : {}),
     },
   });
-export const getShowsByMovie = (movieId, date) =>
-  api.get(`/shows/by-movie/${movieId}`, { params: date ? { date } : {} });
-export const getShowById = (id) => api.get(`/shows/${id}`);
+export const getShowsByMovie  = (movieId, date) =>
+  publicApi.get(`/shows/by-movie/${movieId}`, { params: date ? { date } : {} });
+export const getShowById      = (id) => publicApi.get(`/shows/${id}`);
 export const createShow = (showData) => api.post('/shows', showData);
 export const updateShow = (id, showData) => api.put(`/shows/${id}`, showData);
 export const deleteShow = (id) => api.delete(`/shows/${id}`);

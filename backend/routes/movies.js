@@ -14,30 +14,51 @@
 import express from 'express';
 import Movie   from '../models/Movie.js';
 import Show    from '../models/Show.js';
-import { adminMiddleware, requireSuperAdmin, optionalAdminAuth } from '../middleware/auth.js';
+import { adminMiddleware, requireSuperAdmin } from '../middleware/auth.js';
 import { paginate } from '../utils/paginate.js';
+
 
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/movies — Lấy danh sách phim
+// GET /api/movies — PUBLIC endpoint: Luôn trả toàn bộ phim
 //
-// Super-admin   → tất cả phim trong DB
-// Cinema Manager→ chỉ phim đang có suất chiếu tại rạp của mình
-//                 (join Shows → lấy movie IDs)
-// Public        → tất cả phim (không có token)
+// ⚠️  KHÔNG đọc token. Public hoàn toàn.
+//     Dùng cho: Trang chủ client, trang danh sách phim, booking flow.
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/', optionalAdminAuth, async (req, res) => {
+router.get('/', async (req, res) => {
+  try {
+    const result = await paginate(Movie, {}, req.query, {
+      defaultSort: { createdAt: -1 },
+      searchFields: ['title', 'tagline', 'original_language'],
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/movies/admin — PRIVATE: Lấy phim có RBAC
+//
+// ⚠️  PHẢI đặt TRƯỚC /:id để Express không nhầm 'admin' là một ID.
+//
+// Phân quyền (yêu cầu adminMiddleware):
+//   • Super-admin    → tất cả phim trong DB
+//   • Cinema Manager → CHỈ phim đang có suất chiếu tại rạp mình
+//
+// Dùng cho: Admin Dashboard > Quản lý Phim (MovieList.jsx)
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/admin', adminMiddleware, async (req, res) => {
   try {
     let baseFilter = {};
-
-    if (req.optUser?.isTheaterOwner) {
-      // Lấy danh sách movie IDs có suất chiếu tại rạp này
-      const shows = await Show.find({ cinema: req.optUser.theater_id })
-        .distinct('movie');  // trả về mảng ObjectId không trùng
-      baseFilter = { _id: { $in: shows } };
+    if (req.isTheaterOwner && req.theaterScope) {
+      // Cinema Manager: chỉ phim có suất chiếu tại rạp của mình
+      const movieIds = await Show
+        .find({ cinema: req.theaterScope })
+        .distinct('movie');
+      baseFilter = { _id: { $in: movieIds } };
     }
-
     const result = await paginate(Movie, baseFilter, req.query, {
       defaultSort: { createdAt: -1 },
       searchFields: ['title', 'tagline', 'original_language'],
@@ -60,6 +81,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/movies — Tạo phim mới (chỉ super-admin)

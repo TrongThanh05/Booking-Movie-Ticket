@@ -14,6 +14,11 @@ const seatSchema = new mongoose.Schema(
       default: 'regular',
     },
     price_multiplier: { type: Number, default: 1.0 }, // 1.0 Standard, 1.5 VIP, 2.0 Couple
+    status: {
+      type: String,
+      enum: ['active', 'broken', 'maintenance'],
+      default: 'active',
+    },
   },
   { _id: false }, // không cần _id riêng cho mỗi ghế
 );
@@ -106,6 +111,7 @@ export const generateSeats = (layout) => {
         number:           col,
         type:             rowCfg.type || 'regular',
         price_multiplier: rowCfg.price_multiplier ?? 1.0,
+        status:           'active',
       });
     }
   }

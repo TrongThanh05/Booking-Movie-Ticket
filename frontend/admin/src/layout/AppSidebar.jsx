@@ -1,12 +1,3 @@
-/**
- * AppSidebar.jsx — Navigation sidebar (collapsible)
- *
- * Cinema Manager thấy ĐẦY ĐỦ menu như Super-admin,
- * nhưng data trong mỗi trang đã được scope phía backend.
- *
- * Chỉ khác biệt về UI:
- *   - Subtitle dưới logo: "Quản lý rạp" thay vì "Quản trị hệ thống"
- */
 import { useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
@@ -22,15 +13,21 @@ import {
   PlugInIcon,
 } from '../icons';
 
-// ── Menu Configuration ────────────────────────────────────────────────────────
-const menuSections = [
+// ── Menu builder: thay đổi theo role ─────────────────────────────────────────
+const buildMenuSections = (isSuperAdmin) => [
   {
     title: 'QUẢN LÝ CHÍNH',
     items: [
-      { label: 'Dashboard',        icon: GridIcon,      path: '/admin' },
-      { label: 'Quản lý Phim',     icon: VideoIcon,     path: '/admin/movies' },
-      { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon,   path: '/admin/theaters' },
-      { label: 'Lịch Chiếu',       icon: CalenderIcon,  path: '/admin/shows' },
+      { label: 'Dashboard',    icon: GridIcon,     path: '/admin' },
+      { label: 'Quản lý Phim', icon: VideoIcon,    path: '/admin/movies' },
+
+      // SUPER_ADMIN → "Cụm Rạp & Phòng" (có bước chọn rạp)
+      // THEATER_MANAGER → "Danh sách phòng" (thẳng vào /admin/rooms)
+      isSuperAdmin
+        ? { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon,  path: '/admin/theaters' }
+        : { label: 'Danh sách phòng',  icon: BoxCubeIcon,  path: '/admin/rooms' },
+
+      { label: 'Lịch Chiếu',   icon: CalenderIcon, path: '/admin/shows' },
     ],
   },
   {
@@ -55,6 +52,9 @@ const AppSidebar = () => {
   const location = useLocation();
   const sidebarRef = useRef(null);
 
+  // Xây menu động theo role mỗi lần render
+  const menuSections = buildMenuSections(isSuperAdmin);
+
   // Đóng mobile sidebar khi navigate
   useEffect(() => {
     if (isMobile) setIsMobileOpen(false);
@@ -68,6 +68,7 @@ const AppSidebar = () => {
     },
     [location.pathname],
   );
+
 
   // Sidebar visibility & width
   const sidebarClasses = isMobile
