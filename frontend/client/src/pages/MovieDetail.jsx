@@ -20,7 +20,7 @@ import {
 import BlurCircle from '../components/BlurCircle';
 import MovieCard from '../components/MovieCard';
 import { useYouTubePlayer } from '../components/data/useYouTubePlayer';
-import { getMovieById, getMovies, getShowsByMovie } from '../lib/api';
+import { getMovieById, getMovies, getShowsByMovie, checkFavorite, addFavorite, removeFavoriteByMovie } from '../lib/api';
 import useDarkMode from '../hooks/useDarkMode';
 
 const MovieDetail = () => {
@@ -31,6 +31,7 @@ const MovieDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteId, setFavoriteId] = useState(null); // ID của bản ghi Favorite trong DB
   const [relatedMovies, setRelatedMovies] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableDates, setAvailableDates] = useState([]);
@@ -106,10 +107,17 @@ const MovieDetail = () => {
         const movieResponse = await getMovieById(id);
         setMovie(movieResponse.data);
 
-        // Check favorite status
-        const favorites =
-          JSON.parse(localStorage.getItem('yeuThichPhim')) || [];
-        setIsFavorite(favorites.some((f) => f._id === id));
+        // Kiểm tra trạng thái yêu thích từ DB
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user?._id) {
+          try {
+            const favRes = await checkFavorite(user._id, id);
+            setIsFavorite(favRes.data.isFavorite);
+            setFavoriteId(favRes.data.favoriteId);
+          } catch (_) {
+            // Không đăng nhập hoặc lỗi → giữ mặc định false
+          }
+        }
 
         // Fetch all movies for related content
         const allMoviesResponse = await getMovies();
@@ -142,17 +150,29 @@ const MovieDetail = () => {
     fetchMovieData();
   }, [id]);
 
-  // Toggle favorite
-  const toggleFavorite = () => {
-    const favorites = JSON.parse(localStorage.getItem('yeuThichPhim')) || [];
-    let newFavorites;
-    if (isFavorite) {
-      newFavorites = favorites.filter((f) => f._id !== movie._id);
-    } else {
-      newFavorites = [...favorites, movie];
+  // Toggle favorite — gọi API backend
+  const toggleFavorite = async () => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user?._id) {
+      alert('Vui lòng đăng nhập để thêm phim vào danh sách yêu thích.');
+      return;
     }
-    localStorage.setItem('yeuThichPhim', JSON.stringify(newFavorites));
-    setIsFavorite(!isFavorite);
+
+    try {
+      if (isFavorite) {
+        // Bỏ yêu thích
+        await removeFavoriteByMovie(user._id, movie._id);
+        setIsFavorite(false);
+        setFavoriteId(null);
+      } else {
+        // Thêm yêu thích
+        const res = await addFavorite({ userId: user._id, movieId: movie._id });
+        setIsFavorite(true);
+        setFavoriteId(res.data._id);
+      }
+    } catch (err) {
+      console.error('Lỗi khi cập nhật yêu thích:', err);
+    }
   };
 
   // Format date to Vietnamese

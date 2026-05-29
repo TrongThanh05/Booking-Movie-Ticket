@@ -1,42 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MovieCard from '../components/MovieCard';
-import { Search, Grid3X3, List, Star, Loader2, X } from 'lucide-react';
+import { Search, Grid3X3, List, Star, Loader2, X, Heart } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
+import { getUserFavorites, removeFavoriteByMovie } from '../lib/api';
 
 const Favorites = () => {
   const navigate = useNavigate();
-  const [favorites, setFavorites] = useState([]);
+
+  // Lấy user từ localStorage
+  const [currentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')) || null; }
+    catch { return null; }
+  });
+
+  const [favorites, setFavorites] = useState([]);   // dữ liệu gốc từ DB
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
-  const [filteredFavorites, setFilteredFavorites] = useState([]);
 
-  // Load favorites from localStorage
-  useEffect(() => {
-    const storedFavorites = JSON.parse(localStorage.getItem('favorites')) || [];
-    setFavorites(storedFavorites);
-    setLoading(false);
-  }, []);
-
-  // Filter favorites based on search query
-  useEffect(() => {
-    let result = [...favorites];
-    if (searchQuery) {
-      result = result.filter((movie) =>
-        movie.title?.toLowerCase().includes(searchQuery.toLowerCase()),
-      );
+  // ── Fetch từ backend ───────────────────────────────────────────────────────
+  const fetchFavorites = useCallback(async () => {
+    if (!currentUser?._id) {
+      setLoading(false);
+      return;
     }
-    setFilteredFavorites(result);
-  }, [favorites, searchQuery]);
+    try {
+      setLoading(true);
+      const res = await getUserFavorites(currentUser._id);
+      // Mỗi item trong res.data là { _id, user, movie: {...} }
+      setFavorites(res.data);
+    } catch (err) {
+      console.error('Lỗi khi tải yêu thích:', err);
+      setFavorites([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?._id]);
 
-  // Handle remove from favorites
-  const handleRemoveFavorite = (movieId) => {
-    const newFavorites = favorites.filter((movie) => movie._id !== movieId);
-    setFavorites(newFavorites);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+  useEffect(() => { fetchFavorites(); }, [fetchFavorites]);
+
+  // ── Xóa yêu thích ─────────────────────────────────────────────────────────
+  const handleRemoveFavorite = async (movieId) => {
+    if (!currentUser?._id) return;
+    try {
+      await removeFavoriteByMovie(currentUser._id, movieId);
+      setFavorites((prev) => prev.filter((fav) => fav.movie._id !== movieId));
+    } catch (err) {
+      console.error('Lỗi khi xóa yêu thích:', err);
+    }
   };
 
+  // ── Lọc theo từ khóa tìm kiếm ─────────────────────────────────────────────
+  const filteredFavorites = favorites.filter((fav) =>
+    !searchQuery || fav.movie?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 px-4">
@@ -55,16 +75,41 @@ const Favorites = () => {
     );
   }
 
+  // ── Chưa đăng nhập ────────────────────────────────────────────────────────
+  if (!currentUser?._id) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 px-4">
+        <div className="max-w-7xl mx-auto text-center py-20">
+          <Heart className="w-16 h-16 text-gray-600 mx-auto mb-6" />
+          <h2 className="text-white text-2xl font-bold mb-4">
+            Vui lòng đăng nhập
+          </h2>
+          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+            Bạn cần đăng nhập để xem danh sách phim yêu thích của mình.
+          </p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors duration-300"
+          >
+            Đăng nhập ngay
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Chưa có phim yêu thích ────────────────────────────────────────────────
   if (favorites.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 px-4">
         <div className="max-w-7xl mx-auto text-center py-20">
+          <Heart className="w-16 h-16 text-gray-600 mx-auto mb-6" />
           <h2 className="text-white text-2xl font-bold mb-4">
             Chưa có phim yêu thích
           </h2>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Bạn chưa thêm phim nào vào danh sách yêu thích. Hãy khám phá và thêm
-            phim từ trang danh sách!
+            Bạn chưa thêm phim nào vào danh sách yêu thích. Hãy khám phá và
+            thêm phim từ trang danh sách!
           </p>
           <button
             onClick={() => navigate('/movies')}
@@ -77,13 +122,14 @@ const Favorites = () => {
     );
   }
 
+  // ── Main ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 pb-12">
       <BlurCircle top="100px" left="0" />
       <BlurCircle bottom="100px" right="0" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
+        {/* ── Header ── */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-red-500 via-pink-500 to-purple-500 bg-clip-text text-transparent mb-4">
             Phim Yêu Thích
@@ -100,7 +146,7 @@ const Favorites = () => {
           </div>
         </div>
 
-        {/* Search and View Mode */}
+        {/* ── Thanh tìm kiếm + view mode ── */}
         <div className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6 mb-8">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             {/* Search */}
@@ -123,7 +169,7 @@ const Favorites = () => {
               )}
             </div>
 
-            {/* View Mode */}
+            {/* View mode toggle */}
             <div className="flex-shrink-0">
               <div className="flex bg-white/5 rounded-lg p-1">
                 <button
@@ -151,27 +197,29 @@ const Favorites = () => {
           </div>
         </div>
 
-        {/* Favorites Grid/List */}
+        {/* ── Danh sách phim ── */}
         {filteredFavorites.length > 0 ? (
           <div
-            className={`
-            ${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' : 'flex flex-col gap-4'}
-            mb-12
-          `}
+            className={`${
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                : 'flex flex-col gap-4'
+            } mb-12`}
           >
-            {filteredFavorites.map((movie) => (
+            {filteredFavorites.map((fav) => (
               <div
-                key={movie._id}
+                key={fav._id}
                 className={
                   viewMode === 'list'
                     ? 'transform transition-all duration-300 hover:scale-[1.02]'
                     : ''
                 }
               >
+                {/* fav.movie là object phim đã được populate */}
                 <MovieCard
-                  movie={movie}
+                  movie={fav.movie}
                   viewMode={viewMode}
-                  onRemove={() => handleRemoveFavorite(movie._id)}
+                  onRemove={() => handleRemoveFavorite(fav.movie._id)}
                 />
               </div>
             ))}

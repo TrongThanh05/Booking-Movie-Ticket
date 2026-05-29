@@ -146,9 +146,13 @@ export const cancelBooking = (bookingId) =>
 // ========== FAVORITES ==========
 export const getUserFavorites = (userId) =>
   api.get(`/favorites/user/${userId}`);
+export const checkFavorite = (userId, movieId) =>
+  api.get('/favorites/check', { params: { userId, movieId } });
 export const addFavorite = (favoriteData) =>
   api.post('/favorites', favoriteData);
 export const removeFavorite = (favoriteId) =>
   api.delete(`/favorites/${favoriteId}`);
+export const removeFavoriteByMovie = (userId, movieId) =>
+  api.delete(`/favorites/user/${userId}/movie/${movieId}`);
 
 export default api;
