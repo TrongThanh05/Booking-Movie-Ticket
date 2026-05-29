@@ -15,6 +15,16 @@ const ticketSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// ── Sub-schema: từng món F&B trong booking ────────────────────────────────────
+const foodItemSchema = new mongoose.Schema(
+  {
+    foodId:          { type: mongoose.Schema.Types.ObjectId, ref: 'Food', required: true },
+    quantity:        { type: Number, required: true, min: 1 },
+    priceAtPurchase: { type: Number, required: true, min: 0 }, // snapshot giá lúc mua
+  },
+  { _id: false },
+);
+
 // ── Helper: sinh booking_code duy nhất ────────────────────────────────────────
 /**
  * Tạo mã booking dạng BK-XXXXXX (6 ký tự alphanumeric hoa).
@@ -55,6 +65,7 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
     tickets:        [ticketSchema],
+    foods:          { type: [foodItemSchema], default: [] }, // Danh sách F&B đã chọn
     total_amount:   { type: Number, required: true }, // Số tiền cuối cùng khách phải trả
     
     // Voucher & giảm giá

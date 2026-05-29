@@ -143,6 +143,17 @@ export const createBooking = (bookingData) =>
 export const cancelBooking = (bookingId) =>
   api.put(`/bookings/${bookingId}/cancel`);
 
+// ========== FOODS (F&B) ==========
+// ⚠️ Dùng publicApi (không token) → ai cũng xem được menu
+export const getFoods        = (category) =>
+  publicApi.get('/foods', { params: category ? { category } : {} });
+export const getFoodById     = (id)       => publicApi.get(`/foods/${id}`);
+// Admin only
+export const createFood      = (data)     => api.post('/foods', data);
+export const updateFood      = (id, data) => api.put(`/foods/${id}`, data);
+export const deleteFood      = (id)       => api.delete(`/foods/${id}`);
+export const seedFoods       = ()         => api.post('/foods/seed');
+
 // ========== FAVORITES ==========
 export const getUserFavorites = (userId) =>
   api.get(`/favorites/user/${userId}`);

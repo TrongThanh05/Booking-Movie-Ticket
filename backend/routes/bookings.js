@@ -138,17 +138,14 @@ router.get('/:id', async (req, res) => {
 //   → Nếu bất kỳ bước nào fail → rollback toàn bộ
 // ============================================================
 router.post('/', async (req, res) => {
-  const { user_id, show_id, tickets, total_amount, payment_method } = req.body;
+  const { user_id, show_id, tickets, foods, payment_method } = req.body;
 
-  // ── Validate input ──────────────────────────────────────────────────────
+  // ── Validate input ─────────────────────────────────────────────────────────
   if (!user_id || !show_id) {
     return res.status(400).json({ message: 'user_id và show_id là bắt buộc' });
   }
   if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
     return res.status(400).json({ message: 'Danh sách vé (tickets) không được rỗng' });
-  }
-  if (!total_amount || total_amount <= 0) {
-    return res.status(400).json({ message: 'total_amount phải là số dương' });
   }
 
   try {
@@ -157,7 +154,7 @@ router.post('/', async (req, res) => {
       userId:         user_id,
       showId:         show_id,
       tickets,
-      total_amount,
+      foods:          Array.isArray(foods) ? foods : [],
       payment_method: payment_method || 'cash',
     });
 

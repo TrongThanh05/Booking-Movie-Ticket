@@ -10,10 +10,13 @@ import {
   Heart as HeartIcon,
   Timer,
   AlertTriangle,
+  UtensilsCrossed,
+  Plus,
+  Minus,
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
 import TicketQRCode from '../components/TicketQRCode';
-import { getSeatMap, lockSeats, unlockSeats, createBooking } from '../lib/api';
+import { getSeatMap, lockSeats, unlockSeats, createBooking, getFoods } from '../lib/api';
 import toast from 'react-hot-toast';
 
 const LOCK_DURATION_MS = 10 * 60 * 1000; // 10 phút
@@ -31,6 +34,13 @@ const SeatLayout = () => {
   const [lockError, setLockError] = useState(null);
   const [countdown, setCountdown] = useState(null); // seconds remaining
   const [bookingResult, setBookingResult] = useState(null);
+
+  // ── F&B inline state ──────────────────────────────────────────────────────────
+  const [foods, setFoods]               = useState([]);  // danh sách từ API
+  const [foodsLoading, setFoodsLoading] = useState(false);
+  const [activeFoodTab, setActiveFoodTab] = useState('all');
+  // { [foodId]: quantity } — map số lượng đã chọn
+  const [selectedFoods, setSelectedFoods] = useState({});
 
   const countdownRef = useRef(null);
   const lockExpireRef = useRef(null);
@@ -58,11 +68,24 @@ const SeatLayout = () => {
 
   useEffect(() => {
     fetchSeatMap();
-    return () => {
-      // Cleanup timer khi unmount
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
+    return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
   }, [fetchSeatMap]);
+
+  // Fetch foods khi mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setFoodsLoading(true);
+        const res = await getFoods();
+        setFoods(res.data?.data || []);
+      } catch (e) {
+        console.error('getFoods error:', e);
+      } finally {
+        setFoodsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   // ====== Derived data từ API response ======
   const show = seatMapData?.show;
@@ -106,9 +129,41 @@ const SeatLayout = () => {
     return labels[type] || 'Thường';
   };
 
-  const calculateTotal = () => {
-    return selectedSeats.reduce((total, seatId) => total + getSeatPrice(seatId), 0);
+  const calculateSeatsTotal = () =>
+    selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0);
+
+  const calculateFoodsTotal = () =>
+    Object.entries(selectedFoods).reduce((sum, [id, qty]) => {
+      const food = foods.find((f) => f._id === id);
+      return sum + (food ? food.price * qty : 0);
+    }, 0);
+
+  const calculateTotal = () => calculateSeatsTotal() + calculateFoodsTotal();
+
+  // ── F&B helpers ──────────────────────────────────────────────────────────────
+  const handleFoodAdd = (foodId) => {
+    setSelectedFoods((prev) => {
+      const cur = prev[foodId] || 0;
+      if (cur >= 10) { toast.error('Tối đa 10 món mỗi loại'); return prev; }
+      return { ...prev, [foodId]: cur + 1 };
+    });
   };
+
+  const handleFoodRemove = (foodId) => {
+    setSelectedFoods((prev) => {
+      const cur = prev[foodId] || 0;
+      if (cur <= 0) return prev;
+      const next = { ...prev, [foodId]: cur - 1 };
+      if (next[foodId] === 0) delete next[foodId];
+      return next;
+    });
+  };
+
+  const filteredFoods = activeFoodTab === 'all'
+    ? foods
+    : foods.filter((f) => f.category === activeFoodTab);
+
+  const totalFoodItems = Object.values(selectedFoods).reduce((a, b) => a + b, 0);
 
   // ====== Format helpers ======
   const formatPrice = (price) => {
@@ -172,10 +227,8 @@ const SeatLayout = () => {
       toast.error('Vui lòng chọn ít nhất một ghế');
       return;
     }
-
     const userId = getCurrentUserId();
     setLockError(null);
-
     try {
       await lockSeats(showId, selectedSeats, userId);
       toast.success('Ghế đã được giữ trong 10 phút!');
@@ -186,9 +239,7 @@ const SeatLayout = () => {
         const conflicts = err.response.data.conflict_seats || [];
         setLockError(`Ghế ${conflicts.join(', ')} đã có người chọn. Vui lòng chọn ghế khác.`);
         toast.error('Một số ghế đã có người chọn!');
-        // Refresh seat map
         fetchSeatMap();
-        // Deselect conflict seats
         setSelectedSeats((prev) => prev.filter((s) => !conflicts.includes(s)));
       } else {
         toast.error('Lỗi khi giữ ghế. Vui lòng thử lại.');
@@ -211,24 +262,20 @@ const SeatLayout = () => {
     try {
       const tickets = selectedSeats.map((seatId) => ({
         seat_id:   seatId,
-        seat_type: normalizeSeatType(getSeatType(seatId)), // ← chuẩn hóa
+        seat_type: normalizeSeatType(getSeatType(seatId)),
         price:     getSeatPrice(seatId),
       }));
 
-      // POST /api/bookings:
-      //   → Kiểm tra concurrency (booked_seats)
-      //   → Kiểm tra lock còn hiệu lực (hold_until > now)
-      //   → $addToSet booked_seats + $pull reserved_seats  (atomic Transaction)
-      //   → Tạo Booking document
       const response = await createBooking({
         user_id:        userId,
         show_id:        showId,
         tickets,
-        total_amount:   calculateTotal(),
+        foods: Object.entries(selectedFoods)
+          .filter(([, qty]) => qty > 0)
+          .map(([foodId, quantity]) => ({ foodId, quantity })),
         payment_method: 'VNPAY',
       });
 
-      // Dừng countdown
       if (countdownRef.current) clearInterval(countdownRef.current);
       setCountdown(null);
 
@@ -409,7 +456,7 @@ const SeatLayout = () => {
                 <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -mr-9 shrink-0" />
               </div>
 
-              {/* Total */}
+              {/* Total — bao gồm F&B */}
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Tổng thanh toán</span>
                 <span className="text-2xl font-bold text-red-400">{formatPrice(calculateTotal())}</span>
@@ -634,6 +681,129 @@ const SeatLayout = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* ── F&B INLINE SECTION ── */}
+                  <div className="mt-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
+                        <UtensilsCrossed className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-adaptive font-bold text-base">Bắp &amp; Nước</h3>
+                        <p className="text-gray-400 text-xs">Thêm vào để trải nghiệm phim tốt hơn 🍿</p>
+                      </div>
+                      {totalFoodItems > 0 && (
+                        <span className="ml-auto px-2.5 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs font-semibold">
+                          {totalFoodItems} món
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1" style={{scrollbarWidth:'none'}}>
+                      {[
+                        { key: 'all',     label: 'Tất cả' },
+                        { key: 'combo',   label: 'Combo'  },
+                        { key: 'popcorn', label: 'Bắp'    },
+                        { key: 'drink',   label: 'Nước'   },
+                      ].map((tab) => {
+                        const tabCount = tab.key === 'all'
+                          ? totalFoodItems
+                          : Object.entries(selectedFoods)
+                              .filter(([id]) => foods.find((f) => f._id === id)?.category === tab.key)
+                              .reduce((a, [, v]) => a + v, 0);
+                        return (
+                          <button
+                            key={tab.key}
+                            onClick={() => setActiveFoodTab(tab.key)}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all duration-200 ${
+                              activeFoodTab === tab.key
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-white/5 text-gray-400 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {tab.label}
+                            {tabCount > 0 && (
+                              <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
+                                activeFoodTab === tab.key ? 'bg-white/25' : 'bg-red-500 text-white'
+                              }`}>{tabCount}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Food list */}
+                    {foodsLoading ? (
+                      <div className="flex items-center justify-center py-8 gap-2">
+                        <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        <span className="text-gray-400 text-sm">Đang tải menu...</span>
+                      </div>
+                    ) : filteredFoods.length === 0 ? (
+                      <p className="text-center text-gray-500 py-6 text-sm">Không có món nào</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {filteredFoods.map((food) => {
+                          const qty = selectedFoods[food._id] || 0;
+                          return (
+                            <div
+                              key={food._id}
+                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                                qty > 0
+                                  ? 'bg-orange-500/5 border-orange-500/40'
+                                  : 'bg-white/3 border-white/8 hover:border-white/20'
+                              }`}
+                            >
+                              {/* Image */}
+                              <img
+                                src={`/src/assets/images/foods/${food.imageUrl}`}
+                                alt={food.name}
+                                className="w-14 h-14 rounded-lg object-cover shrink-0"
+                                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/80x80/1f2937/9ca3af?text=${encodeURIComponent(food.name.slice(0,4))}`; }}
+                              />
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-adaptive font-semibold text-sm leading-tight line-clamp-1">{food.name}</p>
+                                {food.description && (
+                                  <p className="text-gray-500 text-xs line-clamp-1 mt-0.5">{food.description}</p>
+                                )}
+                                <p className="text-orange-400 font-bold text-sm mt-1">{formatPrice(food.price)}</p>
+                              </div>
+                              {/* Counter */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                {qty > 0 ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleFoodRemove(food._id)}
+                                      className="w-7 h-7 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center transition-colors"
+                                    >
+                                      <Minus className="w-3 h-3 text-white" />
+                                    </button>
+                                    <span className="w-5 text-center text-white font-bold text-sm tabular-nums">{qty}</span>
+                                    <button
+                                      onClick={() => handleFoodAdd(food._id)}
+                                      className="w-7 h-7 rounded-full bg-orange-500 hover:bg-orange-600 flex items-center justify-center transition-colors"
+                                    >
+                                      <Plus className="w-3 h-3 text-white" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => handleFoodAdd(food._id)}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/5 hover:bg-orange-500 border border-white/15 hover:border-orange-500 text-gray-400 hover:text-white text-xs font-semibold transition-all duration-200"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    Thêm
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -645,35 +815,38 @@ const SeatLayout = () => {
                   <div className="max-w-md mx-auto bg-gray-800/50 rounded-xl p-6 space-y-4">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Phim:</span>
-                      <span className="text-adaptive font-semibold">
-                        {show.movie?.title}
-                      </span>
+                      <span className="text-adaptive font-semibold">{show.movie?.title}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ngày giờ:</span>
-                      <span className="text-adaptive">
-                        {formatDate(show.showDateTime)} -{' '}
-                        {formatTime(show.showDateTime)}
-                      </span>
+                      <span className="text-adaptive">{formatDate(show.showDateTime)} - {formatTime(show.showDateTime)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Rạp:</span>
-                      <span className="text-adaptive">
-                        {show.cinema?.name} - {show.room?.name}
-                      </span>
+                      <span className="text-adaptive">{show.cinema?.name} - {show.room?.name}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ghế:</span>
-                      <span className="text-adaptive font-semibold">
-                        {selectedSeats.join(', ')}
-                      </span>
+                      <span className="text-adaptive font-semibold">{selectedSeats.join(', ')}</span>
                     </div>
+                    {totalFoodItems > 0 && (
+                      <div className="space-y-1.5 pt-2 border-t border-gray-700">
+                        <p className="text-gray-400 text-sm font-semibold">Bắp &amp; Nước:</p>
+                        {Object.entries(selectedFoods).filter(([,q])=>q>0).map(([id,qty]) => {
+                          const f = foods.find((x) => x._id === id);
+                          return f ? (
+                            <div key={id} className="flex justify-between text-sm text-gray-300">
+                              <span>{qty}× {f.name}</span>
+                              <span>{formatPrice(f.price * qty)}</span>
+                            </div>
+                          ) : null;
+                        })}
+                      </div>
+                    )}
                     <div className="border-t border-gray-600 pt-4">
                       <div className="flex justify-between text-lg">
                         <span className="text-gray-400">Tổng tiền:</span>
-                        <span className="text-red-500 font-bold">
-                          {formatPrice(calculateTotal())}
-                        </span>
+                        <span className="text-red-500 font-bold">{formatPrice(calculateTotal())}</span>
                       </div>
                     </div>
                   </div>
@@ -741,46 +914,64 @@ const SeatLayout = () => {
               </div>
 
               {selectedSeats.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-adaptive font-semibold mb-3">
-                    Ghế đã chọn:
-                  </h4>
+                <div className="mb-4">
+                  <h4 className="text-adaptive font-semibold mb-3">Ghế đã chọn:</h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedSeats.map((seat) => (
-                      <span
-                        key={seat}
-                        className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm"
-                      >
-                        {seat}
-                      </span>
+                      <span key={seat} className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm">{seat}</span>
                     ))}
                   </div>
-                  <div className="mt-4 space-y-2 text-sm">
-                    {selectedSeats.map((seatId) => {
-                      const type = getSeatType(seatId);
-                      const price = getSeatPrice(seatId);
-                      return (
-                        <div
-                          key={seatId}
-                          className="flex justify-between text-gray-300"
-                        >
-                          <span>
-                            {seatId} ({getSeatTypeLabel(type)})
+                  <div className="mt-3 space-y-1.5 text-sm">
+                    {selectedSeats.map((seatId) => (
+                      <div key={seatId} className="flex justify-between text-gray-300">
+                        <span>{seatId} ({getSeatTypeLabel(getSeatType(seatId))})</span>
+                        <span>{formatPrice(getSeatPrice(seatId))}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* F&B summary trong sidebar — luôn hiển thị khi có chọn */}
+              {totalFoodItems > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-adaptive font-semibold text-sm mb-2 flex items-center gap-1.5">
+                    <UtensilsCrossed className="w-3.5 h-3.5 text-orange-400" />
+                    Bắp &amp; Nước
+                  </h4>
+                  <div className="space-y-1.5 text-sm">
+                    {Object.entries(selectedFoods).filter(([,q])=>q>0).map(([id, qty]) => {
+                      const f = foods.find((x) => x._id === id);
+                      return f ? (
+                        <div key={id} className="flex justify-between text-gray-300">
+                          <span className="truncate flex-1 pr-2">
+                            <span className="text-orange-400 font-semibold mr-1">{qty}×</span>
+                            {f.name}
                           </span>
-                          <span>{formatPrice(price)}</span>
+                          <span className="shrink-0">{formatPrice(f.price * qty)}</span>
                         </div>
-                      );
+                      ) : null;
                     })}
                   </div>
                 </div>
               )}
 
               <div className="border-t border-gray-600 pt-4">
+                {totalFoodItems > 0 && (
+                  <div className="space-y-1 text-sm mb-3">
+                    <div className="flex justify-between text-gray-400">
+                      <span>Tiền ghế:</span>
+                      <span>{formatPrice(calculateSeatsTotal())}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Tiền bắp nước:</span>
+                      <span>{formatPrice(calculateFoodsTotal())}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-gray-400">Tổng tiền:</span>
-                  <span className="text-2xl font-bold text-red-500">
-                    {formatPrice(calculateTotal())}
-                  </span>
+                  <span className="text-2xl font-bold text-red-500">{formatPrice(calculateTotal())}</span>
                 </div>
 
                 {bookingStep === 'select' && (
@@ -789,9 +980,7 @@ const SeatLayout = () => {
                     disabled={selectedSeats.length === 0}
                     className="w-full py-3 bg-red-500 hover:bg-red-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold rounded-full transition-colors"
                   >
-                    {selectedSeats.length === 0
-                      ? 'Chọn ghế để tiếp tục'
-                      : 'Tiếp tục'}
+                    {selectedSeats.length === 0 ? 'Chọn ghế để tiếp tục' : 'Tiếp tục'}
                   </button>
                 )}
 

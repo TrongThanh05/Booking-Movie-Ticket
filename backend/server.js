@@ -13,6 +13,7 @@ import bookingRoutes from './routes/bookings.js';
 import favoriteRoutes from './routes/favorites.js';
 import dashboardRoutes from './routes/dashboard.js';
 import voucherRoutes from './routes/vouchers.js';
+import foodRoutes from './routes/foods.js';
 
 // Import cron
 import { startCronUnlock } from './scripts/cronUnlock.js';
@@ -46,6 +47,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin/dashboard', dashboardRoutes);
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/foods', foodRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
