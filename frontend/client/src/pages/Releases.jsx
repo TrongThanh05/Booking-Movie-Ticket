@@ -24,6 +24,19 @@ import useDarkMode from '../hooks/useDarkMode';
 
 const DATE_TABS_COUNT = 15; // số ngày hiển thị trong thanh ngang
 
+/**
+ * Hook trả về thời điểm hiện tại, tự cập nhật mỗi phút.
+ * Dùng để lọc real-time các suất chiếu đã qua.
+ */
+const useNow = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000); // cập nhật mỗi 1 phút
+    return () => clearInterval(id);
+  }, []);
+  return now;
+};
+
 const buildDateTabs = (count = DATE_TABS_COUNT) => {
   const tabs = [];
   const today = new Date();
@@ -388,6 +401,7 @@ const Releases = () => {
   const [isDark] = useDarkMode();
   const [searchParams] = useSearchParams();
   const dateScrollRef = useRef(null);
+  const now = useNow(); // thời điểm hiện tại, tự cập nhật mỗi phút
 
   /** Scroll date bar by a fixed px amount */
   const scrollDates = useCallback((direction) => {
@@ -466,7 +480,17 @@ const Releases = () => {
 
   // ── Filtered & grouped shows ───────────────────────────────────────────────
   const movieGroups = useMemo(() => {
-    let shows = allShows.filter((s) => isSameDay(s.showDateTime, selectedDate));
+    // Kiểm tra ngày được chọn có phải hôm nay không
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+    const isToday = isSameDay(selectedDate, todayMidnight);
+
+    let shows = allShows.filter((s) => {
+      if (!isSameDay(s.showDateTime, selectedDate)) return false;
+      // Nếu đang xem ngày hôm nay: ẩn suất chiếu đã qua
+      if (isToday && new Date(s.showDateTime) <= now) return false;
+      return true;
+    });
 
     if (selectedLocation) {
       shows = shows.filter((s) => {
@@ -499,7 +523,7 @@ const Releases = () => {
     );
 
     return Object.values(groups);
-  }, [allShows, selectedDate, selectedLocation, selectedTheater, theaterMap]);
+  }, [allShows, selectedDate, selectedLocation, selectedTheater, theaterMap, now]);
 
   // ── Book handler ───────────────────────────────────────────────────────────
   const handleBook = useCallback((show) => {

@@ -142,6 +142,8 @@ export const createBooking = (bookingData) =>
   api.post('/bookings', bookingData);
 export const cancelBooking = (bookingId) =>
   api.put(`/bookings/${bookingId}/cancel`);
+export const deleteBooking = (bookingId, userId) =>
+  api.delete(`/bookings/${bookingId}`, { params: { userId } });
 
 // ========== FOODS (F&B) ==========
 // ⚠️ Dùng publicApi (không token) → ai cũng xem được menu

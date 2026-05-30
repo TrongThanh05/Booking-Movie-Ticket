@@ -24,6 +24,8 @@ const Movies = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('all');
+  const [selectedLanguage, setSelectedLanguage] = useState('all');
+  const [selectedAgeRating, setSelectedAgeRating] = useState('all');
   const [sortBy, setSortBy] = useState('latest');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -43,30 +45,36 @@ const Movies = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset page on sort/genre change
-  useEffect(() => { setPage(1); }, [selectedGenre, sortBy]);
+  // Reset page khi bất kỳ filter/sort thay đổi
+  useEffect(() => { setPage(1); }, [selectedGenre, selectedLanguage, selectedAgeRating, sortBy]);
 
-  // Fetch movies from API with pagination
+  // Fetch movies — tất cả filter được xử lý server-side
   const fetchMovies = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Map sort option to API params
-      let sort = 'createdAt';
+      // Map sort option sang API params
+      let sort = 'release_date';
       let order = 'desc';
-      if (sortBy === 'title')  { sort = 'title'; order = 'asc'; }
+      if (sortBy === 'title')  { sort = 'title';        order = 'asc';  }
       if (sortBy === 'rating') { sort = 'vote_average'; order = 'desc'; }
+      if (sortBy === 'latest') { sort = 'release_date'; order = 'desc'; }
 
-      const response = await api.get('/movies', {
-        params: { page, limit, search: searchDebounced, sort, order },
-      });
+      const params = {
+        page, limit, sort, order,
+        search:     searchDebounced || undefined,
+        genre:      selectedGenre    !== 'all' ? selectedGenre    : undefined,
+        language:   selectedLanguage !== 'all' ? selectedLanguage : undefined,
+        age_rating: selectedAgeRating !== 'all' ? selectedAgeRating : undefined,
+      };
+
+      const response = await api.get('/movies', { params });
 
       const res = response.data;
       if (res.pagination) {
         setMovies(res.data);
         setPagination(res.pagination);
       } else {
-        // Backward compat
         const arr = Array.isArray(res) ? res : [];
         setMovies(arr);
         setPagination({ currentPage: 1, totalPages: 1, totalItems: arr.length, limit, hasNextPage: false, hasPrevPage: false });
@@ -78,21 +86,32 @@ const Movies = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchDebounced, sortBy]);
+  }, [page, limit, searchDebounced, sortBy, selectedGenre, selectedLanguage, selectedAgeRating]);
 
   useEffect(() => { fetchMovies(); }, [fetchMovies]);
 
-  // Client-side genre filter (genres aren't searchable server-side easily)
-  const filteredMovies = selectedGenre === 'all'
-    ? movies
-    : movies.filter((movie) =>
-        movie.genres?.some((g) => g.name?.toLowerCase().includes(selectedGenre.toLowerCase())),
-      );
-
-  // Get unique genres from current page results + all loaded data
+  // Genres: lấy tự động từ kết quả trang hiện tại (chỉ dùng cho dropdown)
   const genres = [
     'all',
-    ...new Set(movies.flatMap((movie) => movie.genres?.map((g) => g.name) || []).filter(Boolean)),
+    ...new Set(movies.flatMap((m) => m.genres?.map((g) => g.name) || []).filter(Boolean)),
+  ];
+
+  // Hardcoded options (không cần derive từ server vì đã biết trước)
+  const LANGUAGES_OPTIONS = [
+    { value: 'vi', label: 'Tiếng Việt' },
+    { value: 'en', label: 'Tiếng Anh' },
+    { value: 'ko', label: 'Tiếng Hàn' },
+    { value: 'jp', label: 'Tiếng Nhật' },
+    { value: 'ch', label: 'Tiếng Trung' },
+  ];
+
+  // Hardcoded age ratings theo enum schema (luật điện ảnh VN)
+  const AGE_RATING_OPTIONS = [
+    { value: 'P',   label: 'Mọi lứa tuổi' },
+    { value: 'K',   label: 'Dưới 13 tuổi (có bảo hộ)' },
+    { value: 'T13', label: 'Trên 13 tuổi' },
+    { value: 'T16', label: 'Trên 16 tuổi' },
+    { value: 'T18', label: 'Trên 18 tuổi' },
   ];
 
   const sortOptions = [
@@ -104,6 +123,8 @@ const Movies = () => {
   const handleClearFilters = () => {
     setSearchQuery('');
     setSelectedGenre('all');
+    setSelectedLanguage('all');
+    setSelectedAgeRating('all');
     setSortBy('latest');
   };
 
@@ -172,7 +193,7 @@ const Movies = () => {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm kiếm phim theo tên hoặc thể loại..."
+                placeholder="Tìm kiếm theo tên phim hoặc tên diễn viên..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-red-500 focus:bg-white/10 transition-all duration-300"
@@ -231,6 +252,44 @@ const Movies = () => {
               </select>
             </div>
 
+            {/* Language Filter */}
+            <div className="flex-1">
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Ngôn ngữ
+              </label>
+              <select
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white focus:outline-none focus:border-red-500 transition-colors duration-300"
+              >
+                <option value="all" className="bg-gray-800">Tất cả ngôn ngữ</option>
+                {LANGUAGES_OPTIONS.map((language) => (
+                  <option key={language.value} value={language.value} className="bg-gray-800 capitalize">
+                    {language.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Age Rating Filter */}
+            <div className="flex-1">
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Giới hạn độ tuổi
+              </label>
+              <select
+                value={selectedAgeRating}
+                onChange={(e) => setSelectedAgeRating(e.target.value)}
+                className="w-full px-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white focus:outline-none focus:border-red-500 transition-colors duration-300"
+              >
+                <option value="all" className="bg-gray-800">Tất cả độ tuổi</option>
+                {AGE_RATING_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-gray-800">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Sort Filter */}
             <div className="flex-1">
               <label className="block text-gray-300 text-sm font-medium mb-2">
@@ -285,6 +344,8 @@ const Movies = () => {
             {/* Clear Filters */}
             {(searchQuery ||
               selectedGenre !== 'all' ||
+              selectedLanguage !== 'all' ||
+              selectedAgeRating !== 'all' ||
               sortBy !== 'latest') && (
               <button
                 onClick={handleClearFilters}
@@ -308,6 +369,8 @@ const Movies = () => {
             <p className="text-gray-400">
               Tìm thấy {pagination.totalItems} bộ phim
               {selectedGenre !== 'all' && ` trong thể loại ${selectedGenre}`}
+              {selectedLanguage !== 'all' && ` · ${LANGUAGES_OPTIONS.find(l => l.value === selectedLanguage)?.label ?? selectedLanguage}`}
+              {selectedAgeRating !== 'all' && ` · ${selectedAgeRating}`}
             </p>
           </div>
         </div>
@@ -317,7 +380,7 @@ const Movies = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
           </div>
-        ) : filteredMovies.length > 0 ? (
+        ) : movies.length > 0 ? (
           <div
             className={`${
               viewMode === 'grid'
@@ -325,7 +388,7 @@ const Movies = () => {
                 : 'flex flex-col gap-4'
             } mb-4`}
           >
-            {filteredMovies.map((movie) => (
+            {movies.map((movie) => (
               <div
                 key={movie._id}
                 className={`h-full ${
