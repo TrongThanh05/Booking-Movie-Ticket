@@ -138,7 +138,7 @@ router.get('/:id', async (req, res) => {
 //   → Nếu bất kỳ bước nào fail → rollback toàn bộ
 // ============================================================
 router.post('/', async (req, res) => {
-  const { user_id, show_id, tickets, foods, payment_method } = req.body;
+  const { user_id, show_id, tickets, foods, payment_method, voucher_id, discount_amount } = req.body;
 
   // ── Validate input ─────────────────────────────────────────────────────────
   if (!user_id || !show_id) {
@@ -151,11 +151,13 @@ router.post('/', async (req, res) => {
   try {
     // Gọi service function (Transaction bên trong)
     const booking = await completeBooking({
-      userId:         user_id,
-      showId:         show_id,
+      userId:          user_id,
+      showId:          show_id,
       tickets,
-      foods:          Array.isArray(foods) ? foods : [],
-      payment_method: payment_method || 'cash',
+      foods:           Array.isArray(foods) ? foods : [],
+      payment_method:  payment_method || 'cash',
+      voucherId:       voucher_id || null,
+      discount_amount: Number(discount_amount) || 0,
     });
 
     return res.status(201).json({

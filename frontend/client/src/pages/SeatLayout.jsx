@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   Clock,
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
 import TicketQRCode from '../components/TicketQRCode';
-import { getSeatMap, lockSeats, unlockSeats, createBooking, getFoods } from '../lib/api';
+import { getSeatMap, lockSeats, unlockSeats, getFoods, validateVoucher, createVnpayPayment, releaseVnpaySeats } from '../lib/api';
+import { Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const LOCK_DURATION_MS = 10 * 60 * 1000; // 10 phút
@@ -24,6 +25,7 @@ const LOCK_DURATION_MS = 10 * 60 * 1000; // 10 phút
 const SeatLayout = () => {
   const { movieId, showId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ====== State ======
   const [seatMapData, setSeatMapData] = useState(null); // API response
@@ -41,6 +43,12 @@ const SeatLayout = () => {
   const [activeFoodTab, setActiveFoodTab] = useState('all');
   // { [foodId]: quantity } — map số lượng đã chọn
   const [selectedFoods, setSelectedFoods] = useState({});
+
+  // ── Voucher state ─────────────────────────────────────────────────────────────
+  const [voucherCode, setVoucherCode]       = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState(null); // { _id, code, discount, discount_type, description }
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [voucherLoading, setVoucherLoading] = useState(false);
 
   const countdownRef = useRef(null);
   const lockExpireRef = useRef(null);
@@ -67,9 +75,75 @@ const SeatLayout = () => {
   }, [showId]);
 
   useEffect(() => {
-    fetchSeatMap();
+    // ── Nhả ghế nếu user đã redirect sang VNPAY nhưng quay lại bằng nút Back ──
+    // (trường hợp này /vnpay/return không bao giờ được load)
+    const checkStaleContext = async () => {
+      try {
+        const raw = sessionStorage.getItem('vnpay_context');
+        if (!raw) return;
+        const ctx = JSON.parse(raw);
+        // Chỉ release nếu context thuộc về show đang xem và có booking_code
+        if (ctx?.showId === showId && ctx?.booking_code) {
+          console.log('[SeatLayout] Phát hiện pending booking cũ, đang nhả ghế...', ctx.booking_code);
+          await releaseVnpaySeats(ctx.booking_code);
+          sessionStorage.removeItem('vnpay_context');
+        }
+      } catch (e) {
+        console.warn('[SeatLayout] Release stale booking error:', e.message);
+        sessionStorage.removeItem('vnpay_context');
+      }
+    };
+
+    const init = async () => {
+      await checkStaleContext(); // Nhả ghế trước
+      fetchSeatMap();             // Sau đó mới load seat map mới nhất
+    };
+    init();
+
     return () => { if (countdownRef.current) clearInterval(countdownRef.current); };
-  }, [fetchSeatMap]);
+  }, [fetchSeatMap, showId]);
+
+  // ── Khôi phục countdown nếu quay lại sau khi VNPAY thất bại ──────────────────
+  useEffect(() => {
+    if (location.state?.restoreVnpay) {
+      const ctx = (() => {
+        try { return JSON.parse(sessionStorage.getItem('vnpay_context') || 'null'); }
+        catch { return null; }
+      })();
+      if (ctx?.lockExpireAt) {
+        const remaining = Math.floor((Number(ctx.lockExpireAt) - Date.now()) / 1000);
+        if (remaining > 0) {
+          // Khôi phục bộ đếm từ lúc còn lại
+          setBookingStep('confirm');
+          setSelectedSeats(ctx.selectedSeats || []);
+          setSelectedFoods(ctx.selectedFoods || {});
+          if (ctx.appliedVoucher) {
+            setAppliedVoucher(ctx.appliedVoucher);
+            setDiscountAmount(ctx.discountAmount || 0);
+          }
+          lockExpireRef.current = Number(ctx.lockExpireAt);
+          setCountdown(remaining);
+
+          countdownRef.current = setInterval(() => {
+            const rem = Math.max(0, Math.floor((lockExpireRef.current - Date.now()) / 1000));
+            setCountdown(rem);
+            if (rem <= 0) {
+              clearInterval(countdownRef.current);
+              toast.error('Hết thời gian giữ ghế! Vui lòng chọn lại.');
+              setBookingStep('select');
+              setSelectedSeats([]);
+              setCountdown(null);
+              fetchSeatMap();
+            }
+          }, 1000);
+
+          // Xóa state khỏi history (tránh re-trigger)
+          window.history.replaceState({}, '');
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch foods khi mount
   useEffect(() => {
@@ -139,6 +213,8 @@ const SeatLayout = () => {
     }, 0);
 
   const calculateTotal = () => calculateSeatsTotal() + calculateFoodsTotal();
+  // Tổng tiền cuối cùng sau khi áp dụng voucher
+  const calculateFinalTotal = () => Math.max(0, calculateTotal() - discountAmount);
 
   // ── F&B helpers ──────────────────────────────────────────────────────────────
   const handleFoodAdd = (foodId) => {
@@ -164,6 +240,41 @@ const SeatLayout = () => {
     : foods.filter((f) => f.category === activeFoodTab);
 
   const totalFoodItems = Object.values(selectedFoods).reduce((a, b) => a + b, 0);
+
+  // ── Áp dụng mã voucher ───────────────────────────────────────────────────────
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      toast.error('Vui lòng nhập mã khuyến mãi');
+      return;
+    }
+    setVoucherLoading(true);
+    try {
+      const res = await validateVoucher({
+        code:         voucherCode.trim(),
+        show_id:      showId,
+        order_amount: calculateTotal(),
+      });
+      const data = res.data;
+      if (data.valid) {
+        setAppliedVoucher(data.voucher);
+        setDiscountAmount(data.discount_amount);
+        toast.success(`Áp dụng mã ${data.voucher.code} thành công! Giảm ${formatPrice(data.discount_amount)}`);
+      } else {
+        toast.error(data.message || 'Mã khuyến mãi không hợp lệ');
+      }
+    } catch (err) {
+      toast.error('Không thể kiểm tra mã. Vui lòng thử lại.');
+    } finally {
+      setVoucherLoading(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setDiscountAmount(0);
+    setVoucherCode('');
+    toast.success('Đã hủy mã khuyến mãi');
+  };
 
   // ====== Format helpers ======
   const formatPrice = (price) => {
@@ -247,7 +358,7 @@ const SeatLayout = () => {
     }
   };
 
-  // ====== Bước 2→3: Thanh toán ======
+  // ====== Bước 2→3: Thanh toán qua VNPAY ======
 
   /** Chuẩn hóa seat_type để khớp enum Backend: 'regular' | 'vip' | 'couple' */
   const normalizeSeatType = (raw) => {
@@ -266,25 +377,50 @@ const SeatLayout = () => {
         price:     getSeatPrice(seatId),
       }));
 
-      const response = await createBooking({
-        user_id:        userId,
-        show_id:        showId,
+      // ── Lưu context vào sessionStorage trước khi redirect (phòng vệ frontend) ──
+      const lockExpireAt = lockExpireRef.current; // timestamp ms
+      sessionStorage.setItem('vnpay_context', JSON.stringify({
+        movieId,
+        showId,
+        selectedSeats,
+        selectedFoods,
+        appliedVoucher,
+        discountAmount,
+        lockExpireAt,
+      }));
+
+      // ── Gọi API tạo pending booking + URL VNPAY ─────────────────────────────
+      const response = await createVnpayPayment({
+        user_id:         userId,
+        show_id:         showId,
         tickets,
         foods: Object.entries(selectedFoods)
           .filter(([, qty]) => qty > 0)
           .map(([foodId, quantity]) => ({ foodId, quantity })),
-        payment_method: 'VNPAY',
+        voucher_id:      appliedVoucher?._id   || null,
+        discount_amount: discountAmount        || 0,
+        lock_expire_at:  lockExpireAt,         // ← để backend tính vnp_ExpireDate
       });
 
-      if (countdownRef.current) clearInterval(countdownRef.current);
-      setCountdown(null);
+      // ── Sau khi có booking_code từ API, cập nhật lại context ──────────────────────
+      // booking_code cần thiết để SeatLayout có thể release khi user nhấn Back
+      sessionStorage.setItem('vnpay_context', JSON.stringify({
+        movieId,
+        showId,
+        selectedSeats,
+        selectedFoods,
+        appliedVoucher,
+        discountAmount,
+        lockExpireAt,
+        booking_code: response.data.booking_code, // ← thenêm booking_code
+      }));
 
-      setBookingResult(response.data.booking ?? response.data);
-      setBookingStep('success');
-      toast.success('Đặt vé thành công!');
+      // ── Redirect sang VNPAY (rời khỏi SPA) ────────────────────────────────
+      window.location.href = response.data.payment_url;
 
     } catch (err) {
       console.error('Payment error:', err);
+      sessionStorage.removeItem('vnpay_context'); // dọn nếu lỗi
 
       if (err.response?.status === 409) {
         const conflicts = err.response.data?.conflict_seats || [];
@@ -427,6 +563,12 @@ const SeatLayout = () => {
                     <p>📍 {show.cinema?.name} · {show.room?.name}</p>
                     <p>🎟️ Ghế: <span className="text-adaptive font-medium">{selectedSeats.join(', ')}</span></p>
                     <p>👤 {user.name || 'Khách'}</p>
+                    {appliedVoucher && (
+                      <p className="flex items-center gap-1 text-green-400">
+                        <Tag className="w-3.5 h-3.5 shrink-0" />
+                        Voucher <span className="font-mono font-bold">{appliedVoucher.code}</span> — Giảm <span className="font-semibold">{formatPrice(discountAmount)}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -456,10 +598,25 @@ const SeatLayout = () => {
                 <div className="w-5 h-5 rounded-full bg-gray-900 border border-white/10 -mr-9 shrink-0" />
               </div>
 
-              {/* Total — bao gồm F&B */}
+              {/* Total — bao gồm F&B + Voucher */}
+              {appliedVoucher && (
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between text-gray-300">
+                    <span>Tạm tính:</span>
+                    <span>{formatPrice(calculateTotal())}</span>
+                  </div>
+                  <div className="flex justify-between text-green-400">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3.5 h-3.5" />
+                      Voucher <span className="font-mono font-bold">{appliedVoucher.code}</span>:
+                    </span>
+                    <span>-{formatPrice(discountAmount)}</span>
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Tổng thanh toán</span>
-                <span className="text-2xl font-bold text-red-400">{formatPrice(calculateTotal())}</span>
+                <span className="text-2xl font-bold text-red-400">{formatPrice(calculateFinalTotal())}</span>
               </div>
             </div>
           </div>
@@ -843,10 +1000,19 @@ const SeatLayout = () => {
                         })}
                       </div>
                     )}
-                    <div className="border-t border-gray-600 pt-4">
+                    <div className="border-t border-gray-600 pt-4 space-y-2">
+                      {appliedVoucher && (
+                        <div className="flex justify-between text-sm text-green-400">
+                          <span className="flex items-center gap-1">
+                            <Tag className="w-3.5 h-3.5" />
+                            Voucher {appliedVoucher.code}:
+                          </span>
+                          <span>-{formatPrice(discountAmount)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-lg">
                         <span className="text-gray-400">Tổng tiền:</span>
-                        <span className="text-red-500 font-bold">{formatPrice(calculateTotal())}</span>
+                        <span className="text-red-500 font-bold">{formatPrice(calculateFinalTotal())}</span>
                       </div>
                     </div>
                   </div>
@@ -956,22 +1122,80 @@ const SeatLayout = () => {
                 </div>
               )}
 
+              {/* ── Voucher Input (chỉ hiện ở bước 'select') ── */}
+              {bookingStep === 'select' && (
+                <div className="mb-4">
+                  {appliedVoucher ? (
+                    // Voucher đã áp dụng thành công
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-green-500/10 border border-green-500/40">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-green-400 shrink-0" />
+                        <div>
+                          <p className="text-green-400 font-mono font-bold text-sm leading-tight">{appliedVoucher.code}</p>
+                          <p className="text-green-300/70 text-xs">Giảm {formatPrice(discountAmount)}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleRemoveVoucher}
+                        className="p-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        title="Hủy voucher"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Ô nhập mã voucher
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyVoucher()}
+                        placeholder="Nhập mã khuyến mãi"
+                        className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white placeholder-gray-500 text-sm font-mono focus:outline-none focus:border-red-500/60 focus:bg-white/8 transition-all"
+                      />
+                      <button
+                        onClick={handleApplyVoucher}
+                        disabled={voucherLoading || !voucherCode.trim()}
+                        className="px-3 py-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors shrink-0"
+                      >
+                        {voucherLoading ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : 'Áp dụng'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="border-t border-gray-600 pt-4">
-                {totalFoodItems > 0 && (
+                {(totalFoodItems > 0 || appliedVoucher) && (
                   <div className="space-y-1 text-sm mb-3">
-                    <div className="flex justify-between text-gray-400">
-                      <span>Tiền ghế:</span>
-                      <span>{formatPrice(calculateSeatsTotal())}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-400">
-                      <span>Tiền bắp nước:</span>
-                      <span>{formatPrice(calculateFoodsTotal())}</span>
-                    </div>
+                    {totalFoodItems > 0 && (
+                      <>
+                        <div className="flex justify-between text-gray-400">
+                          <span>Tiền ghế:</span>
+                          <span>{formatPrice(calculateSeatsTotal())}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-400">
+                          <span>Tiền bắp nước:</span>
+                          <span>{formatPrice(calculateFoodsTotal())}</span>
+                        </div>
+                      </>
+                    )}
+                    {appliedVoucher && (
+                      <div className="flex justify-between text-green-400">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-3 h-3" /> {appliedVoucher.code}:
+                        </span>
+                        <span>-{formatPrice(discountAmount)}</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-gray-400">Tổng tiền:</span>
-                  <span className="text-2xl font-bold text-red-500">{formatPrice(calculateTotal())}</span>
+                  <span className="text-2xl font-bold text-red-500">{formatPrice(calculateFinalTotal())}</span>
                 </div>
 
                 {bookingStep === 'select' && (

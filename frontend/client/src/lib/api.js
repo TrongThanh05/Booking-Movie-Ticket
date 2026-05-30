@@ -166,4 +166,34 @@ export const removeFavorite = (favoriteId) =>
 export const removeFavoriteByMovie = (userId, movieId) =>
   api.delete(`/favorites/user/${userId}/movie/${movieId}`);
 
+// ========== VOUCHERS ==========
+/**
+ * Kiểm tra tính hợp lệ của voucher trong ngữ cảnh đặt vé.
+ * @param {{ code: string, show_id: string, order_amount: number }} params
+ */
+export const validateVoucher = ({ code, show_id, order_amount }) =>
+  publicApi.post('/vouchers/validate', { code, show_id, order_amount });
+
+// ========== VNPAY ==========
+/**
+ * Tạo pending booking + URL redirect sang cổng VNPAY.
+ * @param {object} data - { user_id, show_id, tickets, foods, voucher_id, discount_amount, lock_expire_at }
+ */
+export const createVnpayPayment = (data) =>
+  api.post('/vnpay/create-payment-url', data);
+
+/**
+ * Lấy trạng thái booking sau khi return từ VNPAY.
+ * @param {string} bookingCode - Mã booking (= vnp_TxnRef)
+ */
+export const getVnpayBookingStatus = (bookingCode) =>
+  publicApi.get(`/vnpay/booking-status/${bookingCode}`);
+
+/**
+ * Nhả ghế ngay khi user hủy/thất bại VNPAY — KHÔNG chờ IPN.
+ * @param {string} bookingCode - Mã booking cần hủy
+ */
+export const releaseVnpaySeats = (bookingCode) =>
+  publicApi.post('/vnpay/release-seats', { booking_code: bookingCode });
+
 export default api;
