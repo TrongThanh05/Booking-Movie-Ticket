@@ -16,8 +16,8 @@ import crypto from 'crypto';
 
 // ── Lấy config từ env ─────────────────────────────────────────────────────────
 export const VNPAY_CONFIG = {
-  tmnCode:    process.env.VNPAY_TMN_CODE    || 'BZ99FIMV',
-  hashSecret: process.env.VNPAY_HASH_SECRET || 'Z7SYUX71SFL6OEV2KQCEU0W02C30Z5O4',
+  tmnCode:    process.env.VNPAY_TMN_CODE    || 'L8WM2GFD',
+  hashSecret: process.env.VNPAY_HASH_SECRET || '3SHEM21ZUFCU8LN0MEZPCZX1VP58YHCW',
   url:        process.env.VNPAY_URL         || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
   returnUrl:  process.env.VNPAY_RETURN_URL  || 'http://localhost:5173/vnpay/return',
 };
@@ -40,12 +40,15 @@ export const formatVnpDate = (date = new Date()) => {
 export const hmacSHA512 = (data, key) =>
   crypto.createHmac('sha512', key).update(data, 'utf8').digest('hex');
 
-// ── Sắp xếp & build query string (VNPAY yêu cầu sort theo key ASC) ───────────
+// ── Sắp xếp & build query string theo đúng chuẩn VNPAY ──────────────────────
+// Theo tài liệu VNPAY: sort key ASC, encode value bằng encodeURIComponent,
+// thay %20 bằng +. KHÔNG dùng URLSearchParams vì nó encode khác chuẩn.
 const sortAndBuildQuery = (params) => {
-  const sorted = Object.keys(params)
+  return Object.keys(params)
+    .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== '')
     .sort()
-    .reduce((acc, k) => { acc[k] = params[k]; return acc; }, {});
-  return new URLSearchParams(sorted).toString();
+    .map((k) => `${k}=${encodeURIComponent(params[k]).replace(/%20/g, '+')}`)
+    .join('&');
 };
 
 /**
@@ -92,6 +95,13 @@ export const createVnpayUrl = ({
 
   const queryStr   = sortAndBuildQuery(params);
   const secureHash = hmacSHA512(queryStr, VNPAY_CONFIG.hashSecret);
+
+  // ── DEBUG: In ra để kiểm tra chữ ký (xóa sau khi debug xong) ────────────
+  console.log('[VNPAY DEBUG] TmnCode   :', VNPAY_CONFIG.tmnCode);
+  console.log('[VNPAY DEBUG] HashSecret:', VNPAY_CONFIG.hashSecret);
+  console.log('[VNPAY DEBUG] QueryStr  :', queryStr);
+  console.log('[VNPAY DEBUG] SecureHash:', secureHash);
+  // ─────────────────────────────────────────────────────────────────────────
 
   return `${VNPAY_CONFIG.url}?${queryStr}&vnp_SecureHash=${secureHash}`;
 };

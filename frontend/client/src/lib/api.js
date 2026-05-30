@@ -196,4 +196,13 @@ export const getVnpayBookingStatus = (bookingCode) =>
 export const releaseVnpaySeats = (bookingCode) =>
   publicApi.post('/vnpay/release-seats', { booking_code: bookingCode });
 
+/**
+ * Xác nhận thanh toán thành công từ Return URL — KHÔNG cần IPN.
+ * Gửi toàn bộ tham số vnp_* nhận được từ VNPAY để backend xác thực chữ ký
+ * và cập nhật booking thành paid ngay lập tức.
+ * @param {object} vnpParams - Toàn bộ query params từ VNPAY return URL
+ */
+export const confirmVnpayReturn = (vnpParams) =>
+  publicApi.post('/vnpay/confirm-return', vnpParams);
+
 export default api;
