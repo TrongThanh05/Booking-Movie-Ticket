@@ -32,6 +32,20 @@ const movieSchema = new mongoose.Schema(
     tagline: { type: String },
     original_language: { type: String },
     trailer_url: { type: String },
+
+    // Giới hạn độ tuổi theo luật điện ảnh VN (P: mọi lứa tuổi, K: dưới 13 tuổi có bảo hộ, T13/16/18: trên 13/16/18 tuổi)
+    age_rating: {
+      type:    String,
+      enum:    ['P', 'K', 'T13', 'T16', 'T18'],
+      default: 'P',
+    },
+
+    // Trạng thái phát hành tại rạp
+    status: {
+      type:    String,
+      enum:    ['now_showing', 'coming_soon', 'ended'],
+      default: 'coming_soon',
+    },
   },
   {
     timestamps: true,

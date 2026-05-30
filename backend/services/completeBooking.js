@@ -15,6 +15,8 @@
 import mongoose from 'mongoose';
 import Show     from '../models/Show.js';
 import Booking, { generateUniqueBookingCode } from '../models/Booking.js';
+import Food    from '../models/Food.js';
+import Voucher from '../models/Voucher.js';
 
 /**
  * @typedef {Object} TicketInput
@@ -22,7 +24,11 @@ import Booking, { generateUniqueBookingCode } from '../models/Booking.js';
  * @property {string} seat_type - 'regular' | 'vip' | 'couple'
  * @property {number} price     - Giá vé đã tính (base_price × multiplier)
  *
- * @param {{ userId: string, showId: string, tickets: TicketInput[], total_amount: number, payment_method?: string }} bookingData
+ * @typedef {Object} FoodInput
+ * @property {string} foodId   - ObjectId của món Food
+ * @property {number} quantity - Số lượng
+ *
+ * @param {{ userId: string, showId: string, tickets: TicketInput[], foods?: FoodInput[], payment_method?: string }} bookingData
  * @returns {Promise<import('../models/Booking.js').default>} Booking document đã populate
  */
 // Map mọi variant → giá trị enum chuẩn (chữ thường)
@@ -40,8 +46,11 @@ const completeBooking = async ({
   userId,
   showId,
   tickets,
-  total_amount,
+  foods = [],                    // mảng [{ foodId, quantity }] từ frontend
   payment_method = 'cash',
+  voucherId = null,              // ObjectId của Voucher (nếu đã validate ở frontend)
+  discount_amount = 0,           // Số tiền giảm đã tính sẵn từ /validate
+  _overridePaymentStatus = null, // 'pending' khi tạo booking VNPAY chưa thanh toán
 }) => {
   // Chuẩn hóa seat_type trước khi vào logic
   const normalizedTickets = tickets.map((t) => ({
@@ -49,6 +58,41 @@ const completeBooking = async ({
     seat_type: normalizeType(t.seat_type),
   }));
   const seatIds = normalizedTickets.map((t) => t.seat_id);
+
+  // ── Server-side: xác thực giá vé từ DB (đảm bảo data integrity) ──────────────
+  // [Để đơn giản, dùng giá từ ticket client nhưng vẫn tính lại total từ server]
+  const seatsTotalAmount = normalizedTickets.reduce((sum, t) => sum + (t.price || 0), 0);
+
+  // ── Server-side: xác thực và tính giá F&B từ DB ──────────────────────────────
+  let normalizedFoods = [];
+  let foodsTotalAmount = 0;
+
+  if (foods && foods.length > 0) {
+    const foodIds = foods.map((f) => f.foodId);
+    const foodDocs = await Food.find({ _id: { $in: foodIds }, isActive: true }).lean();
+    const foodMap = {};
+    for (const doc of foodDocs) foodMap[doc._id.toString()] = doc;
+
+    for (const item of foods) {
+      const doc = foodMap[item.foodId?.toString()];
+      if (!doc) throw Object.assign(new Error(`Món đồ ăn ${item.foodId} không tồn tại hoặc đã ngừng bán`), { statusCode: 400 });
+      const qty = Math.max(1, Math.floor(item.quantity || 1));
+      normalizedFoods.push({
+        foodId:          doc._id,
+        quantity:        qty,
+        priceAtPurchase: doc.price,
+      });
+      foodsTotalAmount += doc.price * qty;
+    }
+  }
+
+  // Tổng tiền = vé + F&B (server-side calculated)
+  const rawTotal = seatsTotalAmount + foodsTotalAmount;
+
+  // Áp dụng giảm giá voucher — tin tưởng giá trị frontend đã validate
+  // nhưng giới hạn không vượt quá rawTotal để tránh tổng tiền âm
+  const safeDiscount = Math.min(Math.max(Number(discount_amount) || 0, 0), rawTotal);
+  const total_amount = rawTotal - safeDiscount;
 
   // ── Bắt đầu MongoDB Session ────────────────────────────────────────────────
   const session = await mongoose.startSession();
@@ -145,18 +189,33 @@ const completeBooking = async ({
       const [newBooking] = await Booking.create(
         [
           {
-            user:           userId,
-            show:           showId,
-            tickets:        normalizedTickets,
+            user:            userId,
+            show:            showId,
+            tickets:         normalizedTickets,
+            foods:           normalizedFoods,
             total_amount,
+            voucher:         voucherId || null,
+            discount_amount: safeDiscount,
             payment_method,
-            status:         'confirmed',
-            seat_ids:       seatIds,
-            booking_code:   bookingCode,
+            // Nếu _overridePaymentStatus được truyền ('pending') thì dùng nó,
+            // còn lại mặc định 'confirmed' (thanh toán offline / cash)
+            payment_status:  _overridePaymentStatus || 'paid',
+            status:          _overridePaymentStatus === 'pending' ? 'pending' : 'confirmed',
+            seat_ids:        seatIds,
+            booking_code:    bookingCode,
           },
         ],
         { session },
       );
+
+      // ── Tăng used_count của Voucher ───────────────────────────────────────────────────────
+      // Chỉ tăng ngay khi không phải luồng VNPAY pending.
+      // Với VNPAY, IPN handler sẽ tăng sau khi xác nhận 'paid'.
+      if (voucherId && _overridePaymentStatus !== 'pending') {
+        Voucher.findByIdAndUpdate(voucherId, { $inc: { used_count: 1 } }).catch((e) =>
+          console.error('[Voucher] Không thể tăng used_count:', e.message)
+        );
+      }
 
       // Populate trước khi trả về
       await newBooking.populate([

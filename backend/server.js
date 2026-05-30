@@ -11,9 +11,14 @@ import showRoutes from './routes/shows.js';
 import userRoutes from './routes/users.js';
 import bookingRoutes from './routes/bookings.js';
 import favoriteRoutes from './routes/favorites.js';
+import dashboardRoutes from './routes/dashboard.js';
+import voucherRoutes from './routes/vouchers.js';
+import foodRoutes from './routes/foods.js';
+import vnpayRoutes from './routes/vnpay.js';
 
 // Import cron
 import { startCronUnlock } from './scripts/cronUnlock.js';
+import { startCronSeedShows } from './scripts/cronSeedShows.js';
 
 dotenv.config();
 
@@ -29,6 +34,8 @@ app.use(express.urlencoded({ extended: true }));
 connectDB().then(() => {
   // Khởi chạy cron giải phóng ghế hết hạn (mỗi 60 giây)
   startCronUnlock(60000);
+  // Khởi chạy auto-seed lịch chiếu (mỗi 24 giờ)
+  startCronSeedShows();
 });
 
 // Routes
@@ -39,6 +46,10 @@ app.use('/api/shows', showRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/admin/dashboard', dashboardRoutes);
+app.use('/api/vouchers', voucherRoutes);
+app.use('/api/foods', foodRoutes);
+app.use('/api/vnpay', vnpayRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

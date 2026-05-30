@@ -3,7 +3,7 @@ import Favorite from '../models/Favorite.js';
 
 const router = express.Router();
 
-// Get user favorites
+// ── GET /favorites/user/:userId  →  Lấy tất cả phim yêu thích của user
 router.get('/user/:userId', async (req, res) => {
   try {
     const favorites = await Favorite.find({ user: req.params.userId })
@@ -16,7 +16,21 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// Add favorite
+// ── GET /favorites/check?userId=&movieId=  →  Kiểm tra đã yêu thích chưa
+router.get('/check', async (req, res) => {
+  const { userId, movieId } = req.query;
+  if (!userId || !movieId) {
+    return res.status(400).json({ message: 'userId và movieId là bắt buộc' });
+  }
+  try {
+    const exists = await Favorite.findOne({ user: userId, movie: movieId });
+    res.json({ isFavorite: Boolean(exists), favoriteId: exists?._id || null });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ── POST /favorites  →  Thêm yêu thích
 router.post('/', async (req, res) => {
   const { userId, movieId } = req.body;
 
@@ -27,11 +41,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Already favorited' });
     }
 
-    const favorite = new Favorite({
-      user: userId,
-      movie: movieId,
-    });
-
+    const favorite = new Favorite({ user: userId, movie: movieId });
     await favorite.save();
     await favorite.populate('movie');
 
@@ -41,7 +51,20 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Remove favorite
+// ── DELETE /favorites/user/:userId/movie/:movieId  →  Xóa theo userId+movieId (SPECIFIC — đặt TRƯỚC /:id)
+router.delete('/user/:userId/movie/:movieId', async (req, res) => {
+  try {
+    await Favorite.findOneAndDelete({
+      user: req.params.userId,
+      movie: req.params.movieId,
+    });
+    res.json({ message: 'Favorite removed' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ── DELETE /favorites/:id  →  Xóa theo favoriteId (GENERIC — đặt SAU)
 router.delete('/:id', async (req, res) => {
   try {
     await Favorite.findByIdAndDelete(req.params.id);

@@ -1,0 +1,707 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+@import "tailwindcss";
+@source "../../admin/src/**/*.{js,jsx}";
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ADMIN THEME TOKENS — Tailwind @theme mở rộng cho admin dashboard
+   Các tokens này KHÔNG xung đột với client vì client chỉ dùng --color-primary
+   ══════════════════════════════════════════════════════════════════════════════ */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Client tokens */
+  --color-primary: #F84565;
+  --color-primary-dull: #D63854;
+
+  /* Admin tokens */
+  --font-*: initial;
+  --font-outfit: Outfit, sans-serif;
+
+  --breakpoint-2xsm: 375px;
+  --breakpoint-xsm: 425px;
+  --breakpoint-3xl: 2000px;
+
+  --text-title-2xl: 72px;
+  --text-title-2xl--line-height: 90px;
+  --text-title-xl: 60px;
+  --text-title-xl--line-height: 72px;
+  --text-title-lg: 48px;
+  --text-title-lg--line-height: 60px;
+  --text-title-md: 36px;
+  --text-title-md--line-height: 44px;
+  --text-title-sm: 30px;
+  --text-title-sm--line-height: 38px;
+  --text-theme-xl: 20px;
+  --text-theme-xl--line-height: 30px;
+  --text-theme-sm: 14px;
+  --text-theme-sm--line-height: 20px;
+  --text-theme-xs: 12px;
+  --text-theme-xs--line-height: 18px;
+
+  --color-current: currentColor;
+  --color-transparent: transparent;
+  --color-white: #ffffff;
+  --color-black: #101828;
+
+  --color-brand-25: #f2f7ff;
+  --color-brand-50: #ecf3ff;
+  --color-brand-100: #dde9ff;
+  --color-brand-200: #c2d6ff;
+  --color-brand-300: #9cb9ff;
+  --color-brand-400: #7592ff;
+  --color-brand-500: #465fff;
+  --color-brand-600: #3641f5;
+  --color-brand-700: #2a31d8;
+  --color-brand-800: #252dae;
+  --color-brand-900: #262e89;
+  --color-brand-950: #161950;
+
+  --color-blue-light-25: #f5fbff;
+  --color-blue-light-50: #f0f9ff;
+  --color-blue-light-100: #e0f2fe;
+  --color-blue-light-200: #b9e6fe;
+  --color-blue-light-300: #7cd4fd;
+  --color-blue-light-400: #36bffa;
+  --color-blue-light-500: #0ba5ec;
+  --color-blue-light-600: #0086c9;
+  --color-blue-light-700: #026aa2;
+  --color-blue-light-800: #065986;
+  --color-blue-light-900: #0b4a6f;
+  --color-blue-light-950: #062c41;
+
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #e4e7ec;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+  --color-gray-950: #0c111d;
+  --color-gray-dark: #1a2231;
+
+  --color-orange-25: #fffaf5;
+  --color-orange-50: #fff6ed;
+  --color-orange-100: #ffead5;
+  --color-orange-200: #fddcab;
+  --color-orange-300: #feb273;
+  --color-orange-400: #fd853a;
+  --color-orange-500: #fb6514;
+  --color-orange-600: #ec4a0a;
+  --color-orange-700: #c4320a;
+  --color-orange-800: #9c2a10;
+  --color-orange-900: #7e2410;
+  --color-orange-950: #511c10;
+
+  --color-success-25: #f6fef9;
+  --color-success-50: #ecfdf3;
+  --color-success-100: #d1fadf;
+  --color-success-200: #a6f4c5;
+  --color-success-300: #6ce9a6;
+  --color-success-400: #32d583;
+  --color-success-500: #12b76a;
+  --color-success-600: #039855;
+  --color-success-700: #027a48;
+  --color-success-800: #05603a;
+  --color-success-900: #054f31;
+  --color-success-950: #053321;
+
+  --color-error-25: #fffbfa;
+  --color-error-50: #fef3f2;
+  --color-error-100: #fee4e2;
+  --color-error-200: #fecdca;
+  --color-error-300: #fda29b;
+  --color-error-400: #f97066;
+  --color-error-500: #f04438;
+  --color-error-600: #d92d20;
+  --color-error-700: #b42318;
+  --color-error-800: #912018;
+  --color-error-900: #7a271a;
+  --color-error-950: #55160c;
+
+  --color-warning-25: #fffcf5;
+  --color-warning-50: #fffaeb;
+  --color-warning-100: #fef0c7;
+  --color-warning-200: #fedf89;
+  --color-warning-300: #fec84b;
+  --color-warning-400: #fdb022;
+  --color-warning-500: #f79009;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-warning-800: #93370d;
+  --color-warning-900: #7a2e0e;
+  --color-warning-950: #4e1d09;
+
+  --color-theme-pink-500: #ee46bc;
+  --color-theme-purple-500: #7a5af8;
+
+  --shadow-theme-md: 0px 4px 8px -2px rgba(16, 24, 40, 0.1),
+    0px 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-theme-lg: 0px 12px 16px -4px rgba(16, 24, 40, 0.08),
+    0px 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-theme-sm: 0px 1px 3px 0px rgba(16, 24, 40, 0.1),
+    0px 1px 2px 0px rgba(16, 24, 40, 0.06);
+  --shadow-theme-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+  --shadow-theme-xl: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  --shadow-datepicker: -5px 0 0 #262d3c, 5px 0 0 #262d3c;
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(70, 95, 255, 0.12);
+  --shadow-slider-navigation: 0px 1px 2px 0px rgba(16, 24, 40, 0.1),
+    0px 1px 3px 0px rgba(16, 24, 40, 0.1);
+  --shadow-tooltip: 0px 4px 6px -2px rgba(16, 24, 40, 0.05),
+    -8px 0px 20px 8px rgba(16, 24, 40, 0.05);
+
+  --drop-shadow-4xl: 0 35px 35px rgba(0, 0, 0, 0.25),
+    0 45px 65px rgba(0, 0, 0, 0.15);
+
+  --z-index-1: 1;
+  --z-index-9: 9;
+  --z-index-99: 99;
+  --z-index-999: 999;
+  --z-index-9999: 9999;
+  --z-index-99999: 99999;
+  --z-index-999999: 999999;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CLIENT-SPECIFIC STYLES
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  /* Custom animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  @keyframes glow {
+    0% { filter: brightness(1) blur(20px); }
+    100% { filter: brightness(1.5) blur(25px); }
+  }
+  
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.3; }
+    50% { transform: scale(1.1); opacity: 0.6; }
+  }
+  
+  /* Radial gradient utilities */
+  .bg-gradient-radial {
+    background: radial-gradient(circle, var(--tw-gradient-stops));
+  }
+  
+  /* Custom opacity values */
+  .opacity-5 { opacity: 0.05; }
+  .opacity-15 { opacity: 0.15; }
+  .opacity-25 { opacity: 0.25; }
+  .opacity-35 { opacity: 0.35; }
+  .opacity-45 { opacity: 0.45; }
+  .opacity-55 { opacity: 0.55; }
+  .opacity-65 { opacity: 0.65; }
+  .opacity-85 { opacity: 0.85; }
+  .opacity-95 { opacity: 0.95; }
+}
+
+*{
+     font-family: "Outfit", sans-serif;
+     scrollbar-width: thin;
+     scrollbar-color: #787777 #1e1e1e;
+}
+
+body{
+    color: white;
+    background-color: #09090B;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ADMIN-SCOPE OVERRIDE — Override client body styles khi ở admin area
+   ══════════════════════════════════════════════════════════════════════════════ */
+.admin-scope {
+  color: #101828;
+  background-color: #f9fafb;
+  scrollbar-color: auto;
+}
+
+.admin-scope *,
+.admin-scope ::after,
+.admin-scope ::before,
+.admin-scope ::backdrop,
+.admin-scope ::file-selector-button {
+  border-color: var(--color-gray-200, currentColor);
+}
+
+.admin-scope button:not(:disabled),
+.admin-scope [role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ADMIN CUSTOM UTILITIES (from admin's index.css)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@utility menu-item {
+  @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
+}
+
+@utility menu-item-active {
+  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+}
+
+@utility menu-item-inactive {
+  @apply text-gray-700 hover:bg-gray-100 group-hover:text-gray-700 dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-gray-300;
+}
+
+@utility menu-item-icon {
+  @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400;
+}
+
+@utility menu-item-icon-active {
+  @apply text-brand-500 dark:text-brand-400;
+}
+
+@utility menu-item-icon-size {
+  & svg {
+    @apply !size-6;
+  }
+}
+
+@utility menu-item-icon-inactive {
+  @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+}
+
+@utility menu-item-arrow {
+  @apply relative;
+}
+
+@utility menu-item-arrow-active {
+  @apply rotate-180 text-brand-500 dark:text-brand-400;
+}
+
+@utility menu-item-arrow-inactive {
+  @apply text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300;
+}
+
+@utility menu-dropdown-item {
+  @apply relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-theme-sm font-medium;
+}
+
+@utility menu-dropdown-item-active {
+  @apply bg-brand-50 text-brand-500 dark:bg-brand-500/[0.12] dark:text-brand-400;
+}
+
+@utility menu-dropdown-item-inactive {
+  @apply text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5;
+}
+
+@utility menu-dropdown-badge {
+  @apply block rounded-full px-2.5 py-0.5 text-xs font-medium uppercase text-brand-500 dark:text-brand-400;
+}
+
+@utility menu-dropdown-badge-active {
+  @apply bg-brand-100 dark:bg-brand-500/20;
+}
+
+@utility menu-dropdown-badge-inactive {
+  @apply bg-brand-50 group-hover:bg-brand-100 dark:bg-brand-500/15 dark:group-hover:bg-brand-500/20;
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    @apply size-1.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    @apply rounded-full;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+  }
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #344054;
+}
+
+@layer utilities {
+  /* For Remove Date Icon */
+  input[type="date"]::-webkit-inner-spin-button,
+  input[type="time"]::-webkit-inner-spin-button,
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ADMIN 3RD-PARTY STYLES (ApexCharts, Flatpickr, etc.)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.tableCheckbox:checked ~ span span {
+  @apply opacity-100;
+}
+.tableCheckbox:checked ~ span {
+  @apply border-brand-500 bg-brand-500;
+}
+
+.apexcharts-legend-text {
+  @apply !text-gray-700 dark:!text-gray-400;
+}
+
+.apexcharts-text {
+  @apply !fill-gray-700 dark:!fill-gray-400;
+}
+
+.apexcharts-tooltip.apexcharts-theme-light {
+  @apply gap-1 !rounded-lg !border-gray-200 p-3 !shadow-theme-sm dark:!border-gray-800 dark:!bg-gray-900;
+}
+
+.apexcharts-tooltip-marker {
+  margin-right: 6px;
+  height: 6px;
+  width: 6px;
+}
+.apexcharts-legend-text {
+  @apply !pl-5 !text-gray-700 dark:!text-gray-400;
+}
+.apexcharts-tooltip-series-group {
+  @apply !p-0;
+}
+.apexcharts-tooltip-y-group {
+  @apply !p-0;
+}
+.apexcharts-tooltip-title {
+  @apply !mb-0 !border-b-0 !bg-transparent !p-0 !text-[10px] !leading-4 !text-gray-800 dark:!text-white/90;
+}
+.apexcharts-tooltip-text {
+  @apply !text-theme-xs !text-gray-700 dark:!text-white/90;
+}
+.apexcharts-tooltip-text-y-value {
+  @apply !font-medium;
+}
+
+.apexcharts-gridline {
+  @apply !stroke-gray-100 dark:!stroke-gray-800;
+}
+
+.form-check-input:checked ~ span {
+  @apply border-[6px] border-brand-500 bg-brand-500 dark:border-brand-500;
+}
+
+.input-date-icon::-webkit-inner-spin-button,
+.input-date-icon::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  -webkit-appearance: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES — kích hoạt khi <html> có class "light"
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Smooth theme transition ───────────────────────────────────────────────
+   Class được thêm vào <html> CHỈ trong lúc đổi theme (khoảng 400ms),
+   sau đó bị xóa ngay để không làm chậm hover/animation thường ngày.
+   ──────────────────────────────────────────────────────────────────────── */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition:
+    background-color 0.4s ease,
+    color            0.4s ease,
+    border-color     0.4s ease,
+    fill             0.4s ease,
+    stroke           0.4s ease,
+    opacity          0.2s ease !important;
+  /* Loại trừ transform/width/height để không làm lag layout animations */
+}
+
+/* Nền toàn trang */
+html.light body {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #0f172a;            /* slate-900 */
+}
+
+/* Gradient backgrounds trên các page */
+html.light .bg-gradient-to-b.from-gray-900,
+html.light .bg-gradient-to-b.from-gray-900.via-black,
+html.light [class*="from-gray-900"] {
+  background: linear-gradient(to bottom, #f1f5f9, #e2e8f0) !important;
+}
+
+html.light .bg-black\/20,
+html.light .bg-black\/30,
+html.light .bg-black\/40,
+html.light .bg-black\/50,
+html.light .bg-black\/60,
+html.light .bg-black\/80,
+html.light .bg-black\/90,
+html.light .bg-black\/95 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Text màu trắng → chuyển sang đậm */
+html.light .text-dark {
+  color: #0f172a !important; /* slate-900 */
+}
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #475569 !important; /* slate-600 */
+}
+
+/* Card phim */
+html.light .bg-gray-800 {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05) !important;
+}
+html.light .bg-gray-900 {
+  background-color: #f8fafc !important;
+}
+
+/* Navbar */
+html.light nav.fixed {
+  background-color: rgba(255,255,255,0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Các nút bg-white/10 */
+html.light .bg-white\/10 {
+  background-color: rgba(0,0,0,0.06) !important;
+}
+html.light .hover\:bg-white\/20:hover {
+  background-color: rgba(0,0,0,0.1) !important;
+}
+
+/* Border */
+html.light .border-white\/10,
+html.light .border-gray-700\/50 {
+  border-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Input fields */
+html.light input,
+html.light select {
+  background-color: rgba(0,0,0,0.04) !important;
+  color: #0f172a !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+html.light input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Tac vu 2: Text tren nen do luon trang - chi ap dung cho nut thuc su nen do dam */
+/* NOTE: CHI ap dung cho bg-red-500 tro len, KHONG ap dung cho bg-red-50/bg-red-100 (nav link pastel) */
+html.light button[class*="from-red-"],
+html.light a[class*="from-red-"] {
+  color: #ffffff !important;
+}
+html.light button.bg-red-500,
+html.light button.bg-red-600,
+html.light button.bg-red-700,
+html.light a.bg-red-500,
+html.light a.bg-red-600,
+html.light a.bg-red-700 {
+  color: #ffffff !important;
+}
+html.light button.bg-red-500 span,
+html.light button.bg-red-500 svg,
+html.light button.bg-red-600 span,
+html.light button.bg-red-600 svg {
+  color: #ffffff !important;
+}
+/* Gradient cam-vang (Dat Ve Ngay) */
+html.light [class*="from-orange-"][class*="to-yellow-"] {
+  color: #ffffff !important;
+}
+html.light [class*="from-orange-"][class*="to-yellow-"] span,
+html.light [class*="from-orange-"][class*="to-yellow-"] svg {
+  color: #ffffff !important;
+}
+
+/* === NAV LINK PROTECTION: Dam bao nav links luon hien thi dung mau === */
+/* Default (inactive) nav links: text toi, ro rang */
+html.light nav a.text-gray-700 {
+  color: #1e293b !important; /* slate-800 */
+}
+/* Active nav link: text do dam, khong bi override boi bat ky rule nao */
+html.light nav a.text-red-700,
+html.light nav a.text-red-700 svg,
+html.light nav a.text-red-700 span {
+  color: #b91c1c !important; /* red-700 */
+}
+/* Hover nav link */
+html.light nav a:hover.\hover\:text-red-700 {
+  color: #b91c1c !important;
+}
+
+/* Tac vu 3: Releases filter bar & cac bg-white/5 */
+html.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+html.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+html.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+html.light .hover\:bg-white\/20:hover {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+/* Border phu */
+html.light .border-white\/5 { border-color: rgba(0,0,0,0.05) !important; }
+html.light .border-white\/8 { border-color: rgba(0,0,0,0.06) !important; }
+html.light .border-white\/10 { border-color: rgba(0,0,0,0.08) !important; }
+html.light .border-white\/20 { border-color: rgba(0,0,0,0.12) !important; }
+html.light .border-gray-700\/50 { border-color: rgba(0,0,0,0.08) !important; }
+/* Sticky filter panel (bg-black/75 backdrop-blur) — CHI ap dung cho phan tu KHONG phai nav */
+html.light .backdrop-blur-xl:not(nav):not(nav *) {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+/* Date chips inactive */
+html.light button.bg-white\/5 {
+  color: #475569 !important;
+  border-color: rgba(0,0,0,0.08) !important;
+}
+html.light button.bg-white\/5:hover {
+  color: #0f172a !important;
+}
+/* Gray-500 labels */
+html.light .text-gray-500 {
+  color: #64748b !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SEAT LAYOUT PAGE (movies/book) — Light Mode Overrides
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Utility: trắng ở dark mode, đậm ở light mode */
+.text-adaptive { color: #ffffff; }
+html.light .text-adaptive { color: #0f172a !important; }
+
+/* Pricing info cards trong seat map */
+html.light .bg-gray-800\/50 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1) !important;
+}
+html.light .bg-yellow-800\/50 {
+  background-color: rgba(255, 251, 235, 0.95) !important;
+}
+html.light .bg-pink-800\/50 {
+  background-color: rgba(253, 242, 248, 0.95) !important;
+}
+
+/* VIP/Couple seat text contrast on light backgrounds */
+html.light .text-yellow-300 { color: #78350f !important; } /* amber-900 */
+html.light .text-pink-300   { color: #831843 !important; } /* pink-900 */
+
+/* Confirm step & sidebar divider border */
+html.light .border-gray-600 { border-color: rgba(0, 0, 0, 0.15) !important; }
+
+/* "Quay lại" button (bg-gray-600) */
+html.light button.bg-gray-600 {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+html.light button.hover\:bg-gray-700:hover {
+  background-color: #cbd5e1 !important;
+}
+
+/* Disabled "Chọn ghế" button */
+html.light button:disabled {
+  background-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+}
+
+/* "Lịch sử vé" outline button trên success screen */
+html.light button.border.border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+  color: #334155 !important;
+}
+html.light button.hover\:border-white\/40:hover {
+  border-color: rgba(0, 0, 0, 0.35) !important;
+  color: #0f172a !important;
+}
+
+/* Perforated divider circles trên ticket success */
+html.light .bg-gray-900.border.border-white\/10 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Green payment button */
+html.light button.bg-green-500,
+html.light button.bg-green-600 {
+  color: #ffffff !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MY BOOKING PAGE — Light Mode Overrides
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Status badge text: đủ tương phản trên nền pastel */
+html.light .text-green-300 { color: #166534 !important; } /* green-900 */
+html.light .text-red-300   { color: #991b1b !important; } /* red-800   */
+html.light .text-blue-300  { color: #1e3a8a !important; } /* blue-900  */
+
+/* Status badge background: nhẹ hơn, phù hợp light mode */
+html.light .bg-green-500\/20 { background-color: rgba(220, 252, 231, 0.9) !important; } /* green-100 */
+html.light .bg-red-500\/20   { background-color: rgba(254, 226, 226, 0.9) !important; } /* red-100   */
+html.light .bg-blue-500\/20  { background-color: rgba(219, 234, 254, 0.9) !important; } /* blue-100  */
+html.light .bg-gray-500\/20  { background-color: rgba(243, 244, 246, 0.9) !important; } /* gray-100  */
+
+/* Yellow action button (đánh giá) */
+html.light .text-yellow-300  { color: #78350f !important; }
+html.light .bg-yellow-500\/20 { background-color: rgba(254, 243, 199, 0.9) !important; }
+html.light .bg-yellow-500\/30:hover { background-color: rgba(253, 230, 138, 0.9) !important; }
+
+/* QR button active state */
+html.light .text-red-400 { color: #b91c1c !important; }
+
+/* Detail panel border */
+html.light .border-white\/10 { border-color: rgba(0, 0, 0, 0.08) !important; }
+
+/* Detail modal overlay (nếu dùng) */
+html.light .bg-black\/60 { background-color: rgba(0, 0, 0, 0.45) !important; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   FOOD SELECTION MODAL — Animations
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+@keyframes bounceOnce {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.35); }
+}
+
+.animate-slideUp   { animation: slideUp   0.35s cubic-bezier(0.32, 0.72, 0, 1) both; }
+.animate-fadeIn    { animation: fadeIn    0.25s ease both; }
+.animate-bounce-once { animation: bounceOnce 0.4s ease; }
+
+/* Scrollbar none utility for FoodSelection tabs */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

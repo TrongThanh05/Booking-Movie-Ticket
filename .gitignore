@@ -7,7 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build outputs
 dist
 dist-ssr
 *.local
@@ -28,6 +31,3 @@ backend/.env.*
 *.njsproj
 *.sln
 *.sw?
-
-# Implementation plans (local only)
-implementation_plan.md
