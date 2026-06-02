@@ -76,7 +76,12 @@ router.get('/all', adminMiddleware, async (req, res) => {
 // ============================================================
 router.get('/user/:userId', async (req, res) => {
   try {
-    const bookings = await Booking.find({ user: req.params.userId })
+    const bookings = await Booking.find({
+      user:   req.params.userId,
+      // Ẩn các booking VNPAY chưa hoàn tất (status: 'pending')
+      // Chỉ hiển thị: confirmed, cancelled, completed
+      status: { $ne: 'pending' },
+    })
       .populate({
         path: 'show',
         populate: [
@@ -86,6 +91,7 @@ router.get('/user/:userId', async (req, res) => {
         ],
       })
       .populate('user', 'name email')
+      .populate('foods.foodId', 'name category image_url')  // ← populate F&B
       .sort({ booked_at: -1 });
 
     res.json(bookings);
@@ -223,6 +229,39 @@ router.put('/:id/cancel', async (req, res) => {
     );
 
     res.json({ message: 'Hủy vé thành công', cancelled_seats: seatIds });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ============================================================
+// DELETE /api/bookings/:id — Xóa vé khỏi lịch sử (chỉ vé đã hủy)
+//
+// Logic:
+//   1. Chỉ cho phép xóa booking thuộc về chính user đó
+//   2. Chỉ xóa được booking có status === 'cancelled'
+// ============================================================
+router.delete('/:id', async (req, res) => {
+  try {
+    const { userId } = req.query; // frontend truyền userId để xác minh quyền
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy vé' });
+    }
+
+    // Chỉ chủ booking mới được xóa
+    if (userId && booking.user.toString() !== userId) {
+      return res.status(403).json({ message: 'Không có quyền xóa vé này' });
+    }
+
+    // Chỉ cho phép xóa vé đã hủy
+    if (booking.status !== 'cancelled') {
+      return res.status(400).json({ message: 'Chỉ có thể xóa vé đã hủy khỏi lịch sử' });
+    }
+
+    await Booking.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Đã xóa vé khỏi lịch sử' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

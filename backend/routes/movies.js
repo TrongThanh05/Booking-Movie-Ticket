@@ -28,9 +28,34 @@ const router = express.Router();
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const result = await paginate(Movie, {}, req.query, {
-      defaultSort: { createdAt: -1 },
-      searchFields: ['title', 'tagline', 'original_language'],
+    const { genre, language, age_rating } = req.query;
+    const baseFilter = {};
+
+    // Filter: thể loại (genre name match)
+    if (genre && genre !== 'all') {
+      baseFilter['genres.name'] = { $regex: genre, $options: 'i' };
+    }
+    // Filter: ngôn ngữ gốc
+    if (language && language !== 'all') {
+      baseFilter.original_language = language;
+    }
+    // Filter: giới hạn độ tuổi
+    // Logic thực tế: chọn "Trên 13" thì cũng xem được phim T16, T18 (vì 16+ và 18+ đều ≥ 13)
+    if (age_rating && age_rating !== 'all') {
+      const AGE_HIERARCHY = ['P', 'K', 'T13', 'T16', 'T18'];
+      const idx = AGE_HIERARCHY.indexOf(age_rating);
+      if (idx !== -1 && ['T13', 'T16', 'T18'].includes(age_rating)) {
+        // Lọc các rating từ vị trí đã chọn trở lên (inclusive)
+        baseFilter.age_rating = { $in: AGE_HIERARCHY.slice(idx) };
+      } else {
+        // P và K: exact match
+        baseFilter.age_rating = age_rating;
+      }
+    }
+
+    const result = await paginate(Movie, baseFilter, req.query, {
+      defaultSort: { release_date: -1 },
+      searchFields: ['title', 'tagline', 'cast.name', 'cast'],
     });
     res.json(result);
   } catch (error) {

@@ -80,11 +80,15 @@ router.post('/create-payment-url', async (req, res) => {
       _overridePaymentStatus: 'pending',
     });
 
-    // ── Lấy IP người dùng ─────────────────────────────────────────────────────
-    const ipAddr =
+    // ── Lấy IP người dùng (VNPAY chỉ chấp nhận IPv4) ─────────────────────────
+    let ipAddr =
       req.headers['x-forwarded-for']?.split(',')[0].trim() ||
       req.socket.remoteAddress ||
       '127.0.0.1';
+    // Chuyển IPv6 loopback (::1, ::ffff:127.0.0.1) về IPv4
+    if (ipAddr === '::1' || ipAddr === '::ffff:127.0.0.1') ipAddr = '127.0.0.1';
+    // Xử lý dạng ::ffff:x.x.x.x (IPv4-mapped IPv6)
+    if (ipAddr.startsWith('::ffff:')) ipAddr = ipAddr.substring(7);
 
     // ── Build URL redirect sang VNPAY ─────────────────────────────────────────
     const vnpUrl = createVnpayUrl({
@@ -236,7 +240,95 @@ router.get('/ipn', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/vnpay/release-seats
+// POST /api/vnpay/confirm-return
+//
+// Frontend gọi SAU KHI nhận Return URL từ VNPAY với vnp_ResponseCode=00.
+// Endpoint này xác thực chữ ký VNPAY và xác nhận booking thành công.
+//
+// Mục đích: Thay thế việc chờ IPN khi backend chạy trên localhost
+// (VNPAY không thể gọi IPN về localhost/máy tính cá nhân).
+//
+// Body: Toàn bộ các tham số vnp_* từ return URL của VNPAY
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/confirm-return', async (req, res) => {
+  try {
+    const vnpParams = req.body;
+
+    // ── 1. Xác thực chữ ký ──────────────────────────────────────────────────
+    const { valid, responseCode, orderId, amount, transactionId } =
+      verifyVnpayReturn(vnpParams);
+
+    if (!valid) {
+      return res.status(400).json({ message: 'Chữ ký không hợp lệ' });
+    }
+
+    // ── 2. Chỉ xử lý khi VNPAY xác nhận thành công ──────────────────────────
+    if (responseCode !== '00') {
+      return res.status(400).json({ message: 'Giao dịch không thành công', responseCode });
+    }
+
+    // ── 3. Tìm booking ───────────────────────────────────────────────────────
+    const booking = await Booking.findOne({ booking_code: orderId })
+      .populate('show', 'booked_seats');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // ── 4. Idempotency: nếu đã paid rồi → trả booking ngay ──────────────────
+    if (booking.payment_status === 'paid') {
+      const fullBooking = await Booking.findById(booking._id)
+        .populate({
+          path: 'show',
+          populate: [
+            { path: 'movie',   select: 'title poster_path' },
+            { path: 'cinema',  select: 'name location' },
+            { path: 'room_id', select: 'name screen_type' },
+          ],
+        })
+        .populate('user', 'name email');
+      return res.json({ success: true, booking: fullBooking });
+    }
+
+    // ── 5. Kiểm tra số tiền ──────────────────────────────────────────────────
+    if (Math.abs(booking.total_amount - amount) > 1) {
+      return res.status(400).json({ message: 'Số tiền không khớp' });
+    }
+
+    // ── 6. Xác nhận thanh toán thành công ────────────────────────────────────
+    booking.payment_status = 'paid';
+    booking.status         = 'confirmed';
+    booking.transaction_id = transactionId || null;
+    await booking.save();
+
+    // Tăng used_count voucher nếu có
+    if (booking.voucher) {
+      Voucher.findByIdAndUpdate(booking.voucher, { $inc: { used_count: 1 } })
+        .catch((e) => console.error('[VNPAY confirm-return] Voucher error:', e.message));
+    }
+
+    console.log('[VNPAY confirm-return] Payment confirmed:', orderId);
+
+    // ── 7. Trả về full booking cho frontend hiển thị vé ─────────────────────
+    const fullBooking = await Booking.findById(booking._id)
+      .populate({
+        path: 'show',
+        populate: [
+          { path: 'movie',   select: 'title poster_path' },
+          { path: 'cinema',  select: 'name location' },
+          { path: 'room_id', select: 'name screen_type' },
+        ],
+      })
+      .populate('user', 'name email');
+
+    return res.json({ success: true, booking: fullBooking });
+
+  } catch (err) {
+    console.error('[VNPAY] confirm-return error:', err.message);
+    return res.status(500).json({ message: err.message });
+  }
+});
+
 //
 // PUBLIC — Frontend gọi ngay khi phát hiện hủy/thất bại VNPAY,
 // KHÔNG chờ IPN server-to-server.

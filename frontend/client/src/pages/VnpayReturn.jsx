@@ -18,7 +18,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate }        from 'react-router-dom';
 import { Check, AlertTriangle, Loader2, Tag }  from 'lucide-react';
-import { getVnpayBookingStatus, releaseVnpaySeats } from '../lib/api';
+import { getVnpayBookingStatus, releaseVnpaySeats, confirmVnpayReturn } from '../lib/api';
 import BlurCircle                              from '../components/BlurCircle';
 import TicketQRCode                            from '../components/TicketQRCode';
 import toast                                   from 'react-hot-toast';
@@ -33,9 +33,9 @@ const formatDate = (date) =>
 const formatTime = (dateStr) =>
   new Date(dateStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
-// Polling tối đa 8 lần, mỗi 1.5s (chờ IPN xử lý xong)
-const MAX_POLL  = 8;
-const POLL_DELAY = 1500;
+// Polling tối đa 15 lần, mỗi 2s (chờ IPN xử lý xong — tổng 30s)
+const MAX_POLL  = 15;
+const POLL_DELAY = 2000;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const VnpayReturn = () => {
@@ -78,24 +78,8 @@ const VnpayReturn = () => {
   // ── Main effect ───────────────────────────────────────────────────────────
   useEffect(() => {
     const run = async () => {
-          // ── Phòng vệ frontend: kiểm tra thời gian giữ ghế ─────────────────────
-      if (vnpayContext?.lockExpireAt) {
-        const expireMs  = Number(vnpayContext.lockExpireAt);
-        const remaining = expireMs - Date.now();
-        if (remaining <= 0) {
-          // Ghế đã hết thời gian giữ → nhả luôn và về trang chọn ghế
-          await releaseAndGoBack(
-            vnp_TxnRef,
-            vnpayContext,
-            'Đã hết thời gian giữ ghế. Giao dịch đã bị hủy.'
-          );
-          return;
-        }
-      }
-
-      // ── Nếu VNPAY trả responseCode !== '00' → hủy, nhả ghế ngay ──────────
+      // ── Bước 1: Nếu VNPAY trả responseCode !== '00' → hủy, nhả ghế ngay ──
       if (vnp_ResponseCode && vnp_ResponseCode !== '00') {
-        // responseCode 24 = user bấm hủy, các mã khác = lỗi khác
         const reason = vnp_ResponseCode === '24'
           ? 'Bạn đã hủy thanh toán. Ghế đã được giải phóng.'
           : 'Thanh toán không thành công. Ghế đã được giải phóng.';
@@ -103,12 +87,37 @@ const VnpayReturn = () => {
         return;
       }
 
-      // ── Polling booking status (chờ IPN xử lý xong) ───────────────────────
       if (!vnp_TxnRef) {
         await releaseAndGoBack(null, vnpayContext, 'Không tìm thấy thông tin đơn hàng.');
         return;
       }
 
+      // ── Bước 2: vnp_ResponseCode === '00' → gọi confirm-return backend ────
+      // Gửi toàn bộ params vnp_* từ URL lên backend để backend xác thực chữ ký
+      // và xác nhận booking. Cách này không cần chờ IPN (hoạt động trên localhost).
+      if (vnp_ResponseCode === '00') {
+        try {
+          // Thu thập tất cả query params vnp_* từ URL hiện tại
+          const vnpParams = {};
+          searchParams.forEach((value, key) => {
+            if (key.startsWith('vnp_')) vnpParams[key] = value;
+          });
+
+          const res = await confirmVnpayReturn(vnpParams);
+          if (res.data?.success && res.data?.booking) {
+            sessionStorage.removeItem('vnpay_context');
+            setBookingData(res.data.booking);
+            setStage('success');
+            toast.success('Thanh toán thành công! 🎉');
+            return;
+          }
+        } catch (confirmErr) {
+          // confirm-return thất bại → fallback sang polling IPN
+          console.warn('[VnpayReturn] confirm-return failed, fallback to polling:', confirmErr.message);
+        }
+      }
+
+      // ── Bước 3: Fallback — polling booking-status (chờ IPN) ───────────────
       const poll = async () => {
         try {
           const res  = await getVnpayBookingStatus(vnp_TxnRef);
@@ -122,7 +131,6 @@ const VnpayReturn = () => {
 
           } else if (['failed', 'refunded', 'cancelled'].includes(data.payment_status) ||
                      data.status === 'cancelled') {
-            // IPN đã xử lý thất bại → ghế đã được nhả bởi IPN
             sessionStorage.removeItem('vnpay_context');
             const reason = data.payment_status === 'refunded'
               ? 'Ghế đã hết thời gian giữ trong lúc thanh toán. Tiền sẽ được hoàn lại.'
@@ -135,16 +143,14 @@ const VnpayReturn = () => {
             }
 
           } else {
-            // Vẫn pending → poll tiếp
             pollCountRef.current += 1;
             if (pollCountRef.current < MAX_POLL) {
               setTimeout(poll, POLL_DELAY);
             } else {
-              // Hết lần poll → nhả ghế và về lại
               await releaseAndGoBack(
                 vnp_TxnRef,
                 vnpayContext,
-                'Không thể xác nhận thanh toán. Ghế đã được giải phóng. Vui lòng kiểm tra lịch sử đặt vé.'
+                'Không thể xác nhận thanh toán. Vui lòng kiểm tra lịch sử đặt vé.'
               );
             }
           }

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import BlurCircle from '../components/BlurCircle';
 import TicketQRCode from '../components/TicketQRCode';
-import { getUserBookings, cancelBooking } from '../lib/api';
+import { getUserBookings, cancelBooking, deleteBooking } from '../lib/api';
 import toast from 'react-hot-toast';
 
 const MyBooking = () => {
@@ -129,7 +129,20 @@ const MyBooking = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Hủy vé thất bại');
     }
+  };  // Handle delete booking (chỉ vé đã hủy)
+  const handleDelete = async (bookingId) => {
+    if (!window.confirm('Xóa vé này khỏi lịch sử? Hành động này không thể hoàn tác.')) return;
+    try {
+      const userId = getCurrentUserId();
+      await deleteBooking(bookingId, userId);
+      toast.success('Đã xóa vé khỏi lịch sử');
+      setBookings((prev) => prev.filter((b) => b._id !== bookingId));
+      if (detailBooking?._id === bookingId) setDetailBooking(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Xóa vé thất bại');
+    }
   };
+
 
   // Format price
   const formatPrice = (price) => {
@@ -305,6 +318,31 @@ const MyBooking = () => {
                 </div>
               )}
 
+              {/* F&B Section */}
+              {b.foods?.length > 0 && (
+                <div className="bg-white/5 rounded-xl p-4 space-y-2">
+                  <h3 className="text-adaptive font-semibold text-sm mb-3 flex items-center gap-2">
+                    🍿 Vật phẩm mua kèm
+                  </h3>
+                  {b.foods.map((f, idx) => {
+                    const name  = f.foodId?.name ?? f.name ?? 'Món ăn';
+                    const price = f.priceAtPurchase ?? 0;
+                    return (
+                      <div key={idx} className="flex justify-between items-center text-sm text-gray-300">
+                        <div className="flex items-center gap-2">
+                          {f.foodId?.image_url && (
+                            <img src={f.foodId.image_url} alt={name}
+                              className="w-8 h-8 object-cover rounded-md" />
+                          )}
+                          <span>{name} <span className="text-gray-500">×{f.quantity}</span></span>
+                        </div>
+                        <span>{formatPrice(price * f.quantity)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Total */}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-gray-400">Tổng thanh toán</span>
@@ -321,6 +359,14 @@ const MyBooking = () => {
                 className="flex-1 py-3 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-semibold rounded-full transition-all duration-200"
               >
                 Hủy vé
+              </button>
+            )}
+            {b.status === 'cancelled' && (
+              <button
+                onClick={() => handleDelete(b._id)}
+                className="flex-1 py-3 bg-gray-700/40 hover:bg-red-500/20 border border-gray-600/40 hover:border-red-500/40 text-gray-400 hover:text-red-300 font-semibold rounded-full transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" /> Xóa khỏi lịch sử
               </button>
             )}
             <button
@@ -520,6 +566,15 @@ const MyBooking = () => {
                               title="Hủy vé"
                             >
                               <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                          {booking.status === 'cancelled' && (
+                            <button
+                              onClick={() => handleDelete(booking._id)}
+                              className="p-2 bg-gray-700/40 hover:bg-red-500/20 rounded-full text-gray-500 hover:text-red-300 transition-colors"
+                              title="Xóa khỏi lịch sử"
+                            >
+                              <X className="w-5 h-5" />
                             </button>
                           )}
                           {canRate(booking) && (

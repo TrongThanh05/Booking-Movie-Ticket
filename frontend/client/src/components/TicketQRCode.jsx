@@ -44,6 +44,15 @@ const TicketQRCode = ({ booking, show: showProp, seats: seatsProp, total: totalP
 
   // ── Dữ liệu nhúng vào QR ─────────────────────────────────────────────────
   const qrPayload = useMemo(() => {
+    // Chuẩn hoá foods từ booking (mảng foodItemSchema đã populate)
+    const foods = booking?.foods?.length
+      ? booking.foods.map((f) => ({
+          name:     f.foodId?.name     ?? f.name     ?? 'Món ăn',
+          quantity: f.quantity,
+          price:    f.priceAtPurchase  ?? 0,
+        }))
+      : [];
+
     const payload = {
       ticket_code:      booking?.booking_code ?? booking?._id ?? 'N/A',
       seats:            seats.join(', '),
@@ -54,6 +63,7 @@ const TicketQRCode = ({ booking, show: showProp, seats: seatsProp, total: totalP
       total_amount:     total,
       payment_method:   booking?.payment_method ?? 'N/A',
       booked_at:        booking?.createdAt       ?? booking?.created_at ?? new Date().toISOString(),
+      foods,   // ← thêm danh sách F&B
       customer: {
         name:  currentUser.name  ?? 'N/A',
         email: currentUser.email ?? 'N/A',
