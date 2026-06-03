@@ -245,4 +245,33 @@ router.delete('/:id/assign-theater', adminMiddleware, requireSuperAdmin, async (
   }
 });
 
+// ── PUT /api/users/:id/reset-password ────────────────────────────────────────
+/**
+ * Reset mật khẩu tài khoản về giá trị mặc định.
+ *   - role = 'admin' → 'Admin@123'
+ *   - role = 'user'  → 'User@123'
+ * Chỉ super-admin (admin không bị ràng buộc rạp) mới được gọi route này.
+ */
+router.put('/:id/reset-password', adminMiddleware, requireSuperAdmin, async (req, res) => {
+  try {
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    }
+
+    const defaultPassword = targetUser.role === 'admin' ? 'Admin@123' : 'User@123';
+
+    // Gán trực tiếp vào field password → pre-save hook sẽ tự hash
+    targetUser.password = defaultPassword;
+    await targetUser.save();
+
+    res.json({
+      message: `Đã reset mật khẩu tài khoản "${targetUser.email}" về mặc định`,
+      role: targetUser.role,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

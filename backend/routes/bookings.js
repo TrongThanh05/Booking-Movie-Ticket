@@ -1,11 +1,61 @@
-import express  from 'express';
-import Booking  from '../models/Booking.js';
-import Show     from '../models/Show.js';
+import express         from 'express';
+import Booking         from '../models/Booking.js';
+import Show            from '../models/Show.js';
 import completeBooking from '../services/completeBooking.js';
+import expireStale     from '../scripts/cronExpireBookings.js';
 import { adminMiddleware } from '../middleware/auth.js';
 import { parseQueryParams } from '../utils/paginate.js';
 
 const router = express.Router();
+
+// ============================================================
+// GET /api/bookings/admin/stale-stats
+// Thống kê booking "treo" chưa thanh toán hiện có
+// ============================================================
+router.get('/admin/stale-stats', adminMiddleware, async (req, res) => {
+  try {
+    const EXPIRE_MIN = parseInt(req.query.expireMin) || 30;
+    const cutoff = new Date(Date.now() - EXPIRE_MIN * 60 * 1000);
+
+    const [staleCount, totalPending] = await Promise.all([
+      Booking.countDocuments({
+        payment_status: 'pending',
+        status:         { $ne: 'cancelled' },
+        booked_at:      { $lt: cutoff },
+      }),
+      Booking.countDocuments({
+        payment_status: 'pending',
+        status:         { $ne: 'cancelled' },
+      }),
+    ]);
+
+    res.json({
+      stale_count:   staleCount,    // quá hạn (sẽ bị auto-hủy lần chạy tiếp)
+      pending_count: totalPending,  // tổng chưa thanh toán (kể cả chưa đến hạn)
+      expire_minutes: EXPIRE_MIN,
+      cutoff,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ============================================================
+// POST /api/bookings/admin/expire-stale
+// Admin trigger thủ công: hủy ngay tất cả booking treo
+// ============================================================
+router.post('/admin/expire-stale', adminMiddleware, async (req, res) => {
+  try {
+    const result = await expireStale();
+    res.json({
+      message: `Đã hủy ${result.expired} booking treo, giải phóng ${result.seatsReleased} ghế`,
+      ...result,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 
 // ============================================================
 // GET /api/bookings/all — Lấy TẤT CẢ bookings (dành cho admin)
@@ -33,6 +83,17 @@ router.get('/all', adminMiddleware, async (req, res) => {
     let searchFilter = {};
     if (search) {
       searchFilter = { booking_code: { $regex: search, $options: 'i' } };
+    }
+
+    // Status filter
+    const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    if (req.query.status && validStatuses.includes(req.query.status)) {
+      showFilter.status = req.query.status;
+    }
+    // Payment status filter
+    const validPayStatuses = ['pending', 'paid', 'failed', 'refunded'];
+    if (req.query.payment_status && validPayStatuses.includes(req.query.payment_status)) {
+      showFilter.payment_status = req.query.payment_status;
     }
 
     const finalFilter = { ...showFilter, ...searchFilter };
@@ -115,7 +176,10 @@ router.get('/:id', async (req, res) => {
           { path: 'room_id', select: 'name screen_type' },
         ],
       })
-      .populate('user', 'name email phone');
+      .populate('user', 'name email phone')
+      .populate('voucher', 'code discount discount_type')
+      .populate('foods.foodId', 'name category imageUrl price')
+      .populate('checked_in_by', 'name');
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -185,6 +249,40 @@ router.post('/', async (req, res) => {
 
     console.error('[Booking] completeBooking error:', err.message);
     return res.status(code).json({ message: err.message });
+  }
+});
+
+// ============================================================
+// PATCH /api/bookings/:id/checkin — Soát vé tại rạp (Check-in)
+//
+// Logic:
+//   1. Booking phải ở status 'confirmed' và payment_status 'paid'
+//   2. Chưa được check-in trước đó
+//   3. Ghi checked_in=true, checked_in_at=now, checked_in_by=req.user._id
+// ============================================================
+router.patch('/:id/checkin', adminMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Không tìm thấy vé' });
+    if (booking.checked_in) {
+      return res.status(400).json({
+        message: 'Vé này đã được soát rồi',
+        checked_in_at: booking.checked_in_at,
+      });
+    }
+    if (booking.status !== 'confirmed' && booking.status !== 'completed') {
+      return res.status(400).json({ message: `Không thể soát vé có trạng thái: ${booking.status}` });
+    }
+
+    booking.checked_in    = true;
+    booking.checked_in_at = new Date();
+    booking.checked_in_by = req.user?._id || null;
+    booking.status        = 'completed';
+    await booking.save();
+
+    res.json({ message: 'Check-in thành công! 🎬', booking });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -267,4 +365,38 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ============================================================
+// DELETE /api/bookings/admin/:id — Admin xóa cứng booking
+//
+// Điều kiện:
+//   • Phải có adminMiddleware (admin only)
+//   • Booking phải ở status 'cancelled' hoặc payment_status 'failed'
+//   • Không thể xóa vé đã xác nhận / đã sử dụng
+// ============================================================
+router.delete('/admin/:id', adminMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    }
+
+    // Chỉ cho phép xóa booking đã hủy
+    if (booking.status !== 'cancelled') {
+      return res.status(400).json({
+        message: `Không thể xóa đơn hàng ở trạng thái "${booking.status}". Chỉ xóa được đơn đã hủy.`,
+      });
+    }
+
+    await Booking.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: `Đã xóa vĩnh viễn đơn hàng ${booking.booking_code}`,
+      booking_code: booking.booking_code,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
+

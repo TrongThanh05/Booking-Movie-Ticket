@@ -22,6 +22,7 @@ import Movie from '../models/Movie.js';
 import Theater from '../models/Theater.js';
 import Room from '../models/Room.js';
 import Show from '../models/Show.js';
+import Booking from '../models/Booking.js';
 
 dotenv.config();
 
@@ -179,10 +180,40 @@ const seedShows = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected:', mongoose.connection.host, '\n');
 
-    // ── 1. Xóa shows cũ ───────────────────────────────────────
-    console.log('🗑️  Clearing old shows...');
-    const del = await Show.deleteMany({});
-    console.log(`   ✔ Deleted ${del.deletedCount} shows\n`);
+    // ── 1. Xóa shows cũ AN TOÀN ──────────────────────────────────────────
+    // ⚠️  KHÔNG dùng deleteMany({}) — sẽ phá vỡ reference của bookings hiện có!
+    // Chỉ xóa shows TRONG QUÁ KHỨ và KHÔNG có booking nào liên kết.
+    console.log('🗑️  Dọn dẹp lịch chiếu cũ (an toàn)...');
+
+    const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+
+    // Lấy shows đã qua
+    const pastShows = await Show.find({ showDateTime: { $lt: today0 } }).select('_id').lean();
+    let deletedCount = 0;
+
+    if (pastShows.length > 0) {
+      const pastIds = pastShows.map(s => s._id);
+
+      // Giữ lại shows có booking liên kết
+      const showsWithBookings = await Booking.distinct('show', { show: { $in: pastIds } });
+      const protectedIds = new Set(showsWithBookings.map(id => id.toString()));
+      const toDelete = pastIds.filter(id => !protectedIds.has(id.toString()));
+
+      if (toDelete.length > 0) {
+        const del = await Show.deleteMany({ _id: { $in: toDelete } });
+        deletedCount = del.deletedCount;
+      }
+
+      // Đánh dấu is_active=false cho shows cũ CÓ booking (giữ để tra cứu)
+      if (showsWithBookings.length > 0) {
+        await Show.updateMany(
+          { _id: { $in: showsWithBookings }, is_active: true },
+          { $set: { is_active: false } },
+        );
+      }
+    }
+    console.log(`   ✔ Đã xóa ${deletedCount} shows cũ (không có booking)\n`);
+
 
     // ── 2. Fetch master data ──────────────────────────────────
     console.log('📦 Loading master data...');

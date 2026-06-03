@@ -18,8 +18,9 @@ import reviewRoutes  from './routes/reviews.js';
 import vnpayRoutes   from './routes/vnpay.js';
 
 // Import cron
-import { startCronUnlock } from './scripts/cronUnlock.js';
-import { startCronSeedShows } from './scripts/cronSeedShows.js';
+import { startCronUnlock }          from './scripts/cronUnlock.js';
+import { startCronSeedShows }       from './scripts/cronSeedShows.js';
+import { startCronExpireBookings }  from './scripts/cronExpireBookings.js';
 
 dotenv.config();
 
@@ -33,10 +34,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Connect to MongoDB
 connectDB().then(() => {
-  // Khởi chạy cron giải phóng ghế hết hạn (mỗi 60 giây)
-  startCronUnlock(60000);
-  // Khởi chạy auto-seed lịch chiếu (mỗi 24 giờ)
-  startCronSeedShows();
+  startCronUnlock(60_000);          // Giải phóng ghế lock hết hạn (mỗi 60s)
+  startCronSeedShows();             // Tạo lịch chiếu mới (mỗi 24h)
+  startCronExpireBookings();        // Hủy booking treo chưa thanh toán (mỗi 5ph)
 });
 
 // Routes
