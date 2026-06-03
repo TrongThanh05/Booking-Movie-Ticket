@@ -10,6 +10,8 @@ import {
   ListIcon,
   GroupIcon,
   DollarLineIcon,
+  FoodIcon,
+  ReviewIcon,
   PlugInIcon,
 } from '../icons';
 
@@ -35,6 +37,8 @@ const buildMenuSections = (isSuperAdmin) => [
     items: [
       { label: 'Đơn hàng / Vé', icon: ListIcon,       path: '/admin/bookings' },
       { label: 'Khách hàng',    icon: GroupIcon,       path: '/admin/users' },
+      { label: 'Đồ ăn & Uống', icon: FoodIcon,        path: '/admin/foods' },
+      { label: 'Đánh giá',     icon: ReviewIcon,      path: '/admin/reviews' },
       { label: 'Khuyến mãi',   icon: DollarLineIcon,  path: '/admin/vouchers' },
     ],
   },

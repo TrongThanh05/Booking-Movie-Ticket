@@ -35,6 +35,9 @@ import UserList     from '@admin/pages/Users/UserList';
 import VoucherList  from '@admin/pages/Vouchers/VoucherList';
 import VoucherForm  from '@admin/pages/Vouchers/VoucherForm';
 import BookingList  from '@admin/pages/Bookings/BookingList';
+import FoodList     from '@admin/pages/Foods/FoodList';
+import FoodForm     from '@admin/pages/Foods/FoodForm';
+import ReviewList   from '@admin/pages/Reviews/ReviewList';
 import AccessDenied from '@admin/pages/OtherPage/AccessDenied';
 import Settings     from '@admin/pages/Settings/Settings';
 
@@ -78,6 +81,10 @@ const AdminSection = () => {
                 <Route path="vouchers/create" element={<VoucherForm />} />
                 <Route path="vouchers/edit/:id" element={<VoucherForm />} />
                 <Route path="bookings"        element={<BookingList />} />
+                <Route path="foods"           element={<FoodList />} />
+                <Route path="foods/create"    element={<FoodForm />} />
+                <Route path="foods/edit/:id"  element={<FoodForm />} />
+                <Route path="reviews"         element={<ReviewList />} />
                 <Route path="settings"        element={<Settings />} />
               </Route>
             </Route>

@@ -23,6 +23,23 @@ router.get('/', async (req, res) => {
 });
 
 // ============================================================
+// GET /api/foods/admin/all — Tất cả món (kể cả đang ẩn) — ADMIN only
+// Query: ?category=combo|popcorn|drink
+// ============================================================
+router.get('/admin/all', adminMiddleware, async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+    const foods = await Food.find(filter).sort({ sortOrder: 1, createdAt: 1 });
+    res.json({ data: foods });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ============================================================
 // GET /api/foods/:id — Chi tiết một món
 // ============================================================
 router.get('/:id', async (req, res) => {
