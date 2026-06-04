@@ -76,11 +76,11 @@
 
 ```js
 // Đề xuất thêm role 'staff':
-role: { type: String, enum: ['user', 'staff', 'admin', 'superadmin'] }
+role: { type: String, enum: ['user', 'staff', 'theater-manager', 'admin'] }
 // - user       : khách hàng thường
-// - staff      : nhân viên rạp (soát vé, xem báo cáo ca)
-// - admin      : quản lý rạp (có theater_id) — Theater Manager
-// - superadmin : toàn quyền (không có theater_id)
+// - staff      : nhân viên rạp - chỉ có thể thao tác với các chức năng (soát vé, xem báo cáo, danh sách phòng, lịch chiếu, đồ ăn thức uống)
+// - theater-manager : quản lý rạp chỉ có chức năng quản lý cho duy nhất một rạp (có theater_id) — Theater Manager
+// - admin : toàn quyền quản lý tất cả rạp (không có theater_id)
 ```
 
 ---

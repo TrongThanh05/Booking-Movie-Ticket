@@ -7,17 +7,31 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   phone: { type: String },
   avatar: { type: String },
-  role: { type: String, enum: ['user', 'admin'], default: 'user' },
   /**
-   * Chỉ tài khoản admin mới có theater_id.
-   * - admin: ObjectId trỏ tới Theater mà tài khoản đó quản lý.
-   * - user : null (mặc định).
+   * Phân cấp quyền 4 tầng:
+   * - user            : Khách hàng thường (đặt vé, xem phim)
+   * - staff           : Nhân viên rạp (soát vé, xem báo cáo ca)
+   * - theater-manager : Quản lý rạp (có theater_id, quản lý phòng/suất chiếu)
+   * - admin           : Toàn quyền hệ thống (không bị scope rạp)
+   */
+  role: {
+    type: String,
+    enum: ['user', 'staff', 'theater-manager', 'admin'],
+    default: 'user',
+  },
+  /**
+   * theater_id: dùng cho staff & theater-manager.
+   * - theater-manager : ObjectId rạp mà tài khoản đó quản lý.
+   * - staff           : ObjectId rạp mà nhân viên được phân công.
+   * - user / admin    : null.
    */
   theater_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Theater',
     default: null,
   },
+  /** Ban tài khoản: true = bị khoá, không thể đăng nhập */
+  isBanned: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

@@ -16,48 +16,80 @@ import {
 } from '../icons';
 
 // ── Menu builder: thay đổi theo role ─────────────────────────────────────────
-const buildMenuSections = (isSuperAdmin) => [
-  {
-    title: 'QUẢN LÝ CHÍNH',
-    items: [
-      { label: 'Dashboard',    icon: GridIcon,     path: '/admin' },
-      { label: 'Quản lý Phim', icon: VideoIcon,    path: '/admin/movies' },
+/**
+ * Phân quyền hiển thị menu:
+ *   admin           → tất cả, vào /admin/theaters (quản lý toàn bộ rạp)
+ *   theater-manager → phim(xem), phòng(/admin/rooms), lịch chiếu, đơn hàng, đồ ăn, đánh giá
+ *   staff           → lịch chiếu, đơn hàng, đồ ăn (chỉ xem, không sửa)
+ */
+const buildMenuSections = ({ isAdmin, isTheaterManager, isStaff }) => {
+  const sections = [];
 
-      // SUPER_ADMIN → "Cụm Rạp & Phòng" (có bước chọn rạp)
-      // THEATER_MANAGER → "Danh sách phòng" (thẳng vào /admin/rooms)
-      isSuperAdmin
-        ? { label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon,  path: '/admin/theaters' }
-        : { label: 'Danh sách phòng',  icon: BoxCubeIcon,  path: '/admin/rooms' },
+  // ── QUẢN LÝ CHÍNH ──────────────────────────────────────────────────────────
+  const mainItems = [
+    { label: 'Dashboard', icon: GridIcon, path: '/admin' },
+  ];
 
-      { label: 'Lịch Chiếu',   icon: CalenderIcon, path: '/admin/shows' },
-    ],
-  },
-  {
-    title: 'VẬN HÀNH',
-    items: [
-      { label: 'Đơn hàng / Vé', icon: ListIcon,       path: '/admin/bookings' },
-      { label: 'Khách hàng',    icon: GroupIcon,       path: '/admin/users' },
-      { label: 'Đồ ăn & Uống', icon: FoodIcon,        path: '/admin/foods' },
-      { label: 'Đánh giá',     icon: ReviewIcon,      path: '/admin/reviews' },
-      { label: 'Khuyến mãi',   icon: DollarLineIcon,  path: '/admin/vouchers' },
-    ],
-  },
-  {
-    title: 'KHÁC',
-    items: [
-      { label: 'Cài đặt', icon: PlugInIcon, path: '/admin/settings' },
-    ],
-  },
-];
+  // Phim: admin & theater-manager xem được
+  if (isAdmin || isTheaterManager) {
+    mainItems.push({ label: 'Quản lý Phim', icon: VideoIcon, path: '/admin/movies' });
+  }
+
+  // Rạp & Phòng: admin → tất cả rạp; theater-manager/staff → phòng rạp mình
+  if (isAdmin) {
+    mainItems.push({ label: 'Cụm Rạp & Phòng', icon: BoxCubeIcon, path: '/admin/theaters' });
+  } else {
+    mainItems.push({ label: 'Danh sách phòng', icon: BoxCubeIcon, path: '/admin/rooms' });
+  }
+
+  // Lịch chiếu: tất cả có quyền xem
+  mainItems.push({ label: 'Lịch Chiếu', icon: CalenderIcon, path: '/admin/shows' });
+
+  sections.push({ title: 'QUẢN LÝ CHÍNH', items: mainItems });
+
+  // ── VẬN HÀNH ───────────────────────────────────────────────────────────────
+  const opsItems = [
+    { label: 'Đơn hàng / Vé', icon: ListIcon, path: '/admin/bookings' },
+    { label: 'Đồ ăn & Uống',  icon: FoodIcon, path: '/admin/foods' },
+  ];
+
+  // Đánh giá: admin và theater-manager
+  if (isAdmin || isTheaterManager) {
+    opsItems.push({ label: 'Đánh giá', icon: ReviewIcon, path: '/admin/reviews' });
+  }
+
+  // Người dùng + Khuyến mãi: chỉ admin
+  if (isAdmin) {
+    opsItems.push({ label: 'Người dùng', icon: GroupIcon,      path: '/admin/users' });
+    opsItems.push({ label: 'Khuyến mãi', icon: DollarLineIcon, path: '/admin/vouchers' });
+  }
+
+  sections.push({ title: 'VẬN HÀNH', items: opsItems });
+
+  // ── KHÁC ───────────────────────────────────────────────────────────────────
+  if (isAdmin) {
+    sections.push({ title: 'KHÁC', items: [{ label: 'Cài đặt', icon: PlugInIcon, path: '/admin/settings' }] });
+  }
+
+  return sections;
+};
+
+
 
 const AppSidebar = () => {
   const { isExpanded, isMobileOpen, isMobile, setIsMobileOpen } = useSidebar();
-  const { isSuperAdmin } = useAuth();
+  const { isAdmin, isTheaterManager, isStaff } = useAuth();
   const location = useLocation();
   const sidebarRef = useRef(null);
 
   // Xây menu động theo role mỗi lần render
-  const menuSections = buildMenuSections(isSuperAdmin);
+  const menuSections = buildMenuSections({ isAdmin, isTheaterManager, isStaff });
+
+  // Subtitle theo role
+  const roleSubtitle = isAdmin ? 'Quản trị hệ thống'
+    : isTheaterManager ? 'Quản lý rạp của tôi'
+    : isStaff ? 'Nhân viên rạp'
+    : 'Admin';
 
   // Đóng mobile sidebar khi navigate
   useEffect(() => {
@@ -100,7 +132,7 @@ const AppSidebar = () => {
             </h1>
             {/* Subtitle thay đổi theo role để Cinema Manager biết rõ phạm vi */}
             <p className="text-[10px] text-gray-400 dark:text-gray-500">
-              {isSuperAdmin ? 'Quản trị hệ thống' : 'Quản lý rạp của tôi'}
+              {roleSubtitle}
             </p>
           </div>
         )}

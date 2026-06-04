@@ -2,13 +2,11 @@
  * AuthContext.jsx — HỆ THỐNG XÁC THỰC THỐNG NHẤT
  * Dùng chung cho cả Client (user) và Admin dashboard.
  *
- * Features:
- *   - login(email, password)  → gọi API, lưu token + user
- *   - register(data)          → gọi API, tự động login
- *   - logout()                → xóa session
- *   - AuthModal controls      → mở/đóng floating modal (client side)
- *   - isLoggedIn, isAdmin     → computed flags cho route guards
- *   - isTheaterOwner, theaterId → phân quyền admin rạp
+ * Phân cấp quyền 4 tầng:
+ *   admin            → toàn quyền, không có theater_id
+ *   theater-manager  → quản lý 1 rạp, có theater_id
+ *   staff            → nhân viên rạp, có theater_id
+ *   user             → khách hàng thường, không có theater_id
  */
 import { createContext, useContext, useState, useCallback } from 'react';
 import api from '../lib/api';
@@ -53,22 +51,17 @@ export const AuthProvider = ({ children }) => {
   // ── Computed flags ──────────────────────────────────────────────────────────
   const isLoggedIn      = Boolean(token && user);
   const isAuthenticated = isLoggedIn; // alias cho admin components
-  const isAdmin         = isLoggedIn && user?.role === 'admin';
 
-  /**
-   * isTheaterOwner: admin được gán quản lý 1 rạp cụ thể.
-   * - true  nếu role === 'admin' && theater_id !== null
-   * - false nếu role !== 'admin' || theater_id === null (super-admin)
-   *
-   * theaterId: ObjectId string của rạp admin đang quản lý (null nếu super-admin).
-   * Frontend dùng giá trị này để:
-   *   1. Auto-filter rooms/shows/bookings theo rạp
-   *   2. Ẩn các nút tạo/xóa theater (chỉ super-admin)
-   *   3. Hiển thị tên rạp trên header
-   */
-  const isTheaterOwner = isAdmin && Boolean(user?.theater_id);
-  const isSuperAdmin   = isAdmin && !user?.theater_id;
-  const theaterId      = user?.theater_id || null;
+  // 4 role flags — chỉ 4 loại này, không có gì khác
+  const isAdmin          = isLoggedIn && user?.role === 'admin';
+  const isTheaterManager = isLoggedIn && user?.role === 'theater-manager';
+  const isStaff          = isLoggedIn && user?.role === 'staff';
+
+  // isStaffRole: có quyền vào admin panel (3 role trên)
+  const isStaffRole = isAdmin || isTheaterManager || isStaff;
+
+  // theaterId: chỉ có với theater-manager và staff
+  const theaterId = (isTheaterManager || isStaff) ? (user?.theater_id || null) : null;
 
   // ── login() — Gọi API đăng nhập ────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
@@ -108,8 +101,9 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user, token,
-        isLoggedIn, isAuthenticated, isAdmin,
-        isTheaterOwner, isSuperAdmin, theaterId,
+        isLoggedIn, isAuthenticated,
+        isAdmin, isTheaterManager, isStaff, isStaffRole,
+        theaterId,
         login, register, logout,
         authModalOpen, authModalTab,
         openAuthModal, closeAuthModal, setAuthModalTab,

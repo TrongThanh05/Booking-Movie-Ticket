@@ -20,18 +20,22 @@ const authMiddleware = (req, res, next) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * adminMiddleware
- * Xác thực JWT + kiểm tra role === 'admin'.
+ * Xác thực JWT + kiểm tra role thuộc nhóm quản lý (admin | theater-manager | staff).
  * Gắn req.user (full document, trừ password) vào request.
  *
- * Phân loại admin sau middleware này:
- *   • Super-admin : user.theater_id === null  → toàn quyền
- *   • Theater-owner: user.theater_id !== null → chỉ quản lý rạp được gán
+ * Phân loại sau middleware:
+ *   • admin           : theater_id === null  → toàn quyền hệ thống
+ *   • theater-manager : theater_id !== null  → quản lý rạp được gán
+ *   • staff           : theater_id !== null  → nhân viên rạp (chỉ đọc)
  *
- * Các route handler có thể kiểm tra:
- *   req.user.theater_id   → null = super-admin
- *   req.isTheaterOwner    → true nếu là admin rạp (set bởi middleware phía sau)
- *   req.theaterScope      → ObjectId rạp cần scope (set bởi middleware phía sau)
+ * req.isAdmin           → true nếu role === 'admin'
+ * req.isTheaterManager  → true nếu role === 'theater-manager'
+ * req.isStaff           → true nếu role === 'staff'
+ * req.isTheaterOwner    → true nếu là theater-manager hoặc staff (có scope rạp)
+ * req.theaterScope      → ObjectId rạp (hoặc null với admin)
  * ───────────────────────────────────────────────────────────────────────────*/
+const STAFF_ROLES = ['admin', 'theater-manager', 'staff'];
+
 const adminMiddleware = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -41,21 +45,18 @@ const adminMiddleware = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) return res.status(401).json({ message: 'User not found' });
-    if (user.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden: admin only' });
+    if (user.isBanned) return res.status(403).json({ message: 'Tài khoản đã bị khoá' });
+    if (!STAFF_ROLES.includes(user.role)) {
+      return res.status(403).json({ message: 'Forbidden: staff access only' });
     }
 
-    req.userId = user._id;
-    req.user   = user;          // chứa theater_id nếu là admin rạp
-
-    // ── Phân loại admin ──────────────────────────────────────────────────────
-    if (user.theater_id) {
-      req.isTheaterOwner = true;
-      req.theaterScope   = user.theater_id; // ObjectId rạp mà admin quản lý
-    } else {
-      req.isTheaterOwner = false;
-      req.theaterScope   = null; // super-admin → không bị scope
-    }
+    req.userId           = user._id;
+    req.user             = user;
+    req.isAdmin          = user.role === 'admin';
+    req.isTheaterManager = user.role === 'theater-manager';
+    req.isStaff          = user.role === 'staff';
+    req.isTheaterOwner   = user.role !== 'admin' && Boolean(user.theater_id);
+    req.theaterScope     = user.theater_id || null;
 
     next();
   } catch (error) {
@@ -65,16 +66,27 @@ const adminMiddleware = async (req, res, next) => {
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * requireSuperAdmin
- * Middleware chặn theater-owner, chỉ cho super-admin (theater_id === null).
+ * Chỉ cho phép admin (toàn quyền, không bị scope rạp).
  * Sử dụng SAU adminMiddleware.
- *
- * Ví dụ:
- *   router.post('/movies', adminMiddleware, requireSuperAdmin, handler)
  * ───────────────────────────────────────────────────────────────────────────*/
 const requireSuperAdmin = (req, res, next) => {
-  if (req.isTheaterOwner) {
+  if (!req.isAdmin) {
     return res.status(403).json({
-      message: 'Chỉ super-admin mới có quyền thực hiện thao tác này',
+      message: 'Chỉ Admin toàn hệ thống mới có quyền thực hiện thao tác này',
+    });
+  }
+  next();
+};
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * requireTheaterManager
+ * Chỉ cho phép admin hoặc theater-manager.
+ * Sử dụng SAU adminMiddleware.
+ * ───────────────────────────────────────────────────────────────────────────*/
+const requireTheaterManager = (req, res, next) => {
+  if (!req.isAdmin && !req.isTheaterManager) {
+    return res.status(403).json({
+      message: 'Chỉ Admin hoặc Quản lý rạp mới có quyền thực hiện thao tác này',
     });
   }
   next();
@@ -153,6 +165,8 @@ const scopeToTheater = () => {
  *   req.optUser.theater_id   → ObjectId | null
  *   req.optUser.isTheaterOwner → Boolean
  * ───────────────────────────────────────────────────────────────────────────*/
+const STAFF_ROLES_OPT = ['admin', 'theater-manager', 'staff'];
+
 const optionalAdminAuth = async (req, res, next) => {
   req.optUser = null;
   try {
@@ -163,17 +177,27 @@ const optionalAdminAuth = async (req, res, next) => {
       authHeader.split(' ')[1],
       process.env.JWT_SECRET || 'your-secret-key',
     );
-    const user = await User.findById(decoded.id).select('role theater_id');
-    if (user?.role === 'admin') {
+    const user = await User.findById(decoded.id).select('role theater_id isBanned');
+    if (user && !user.isBanned && STAFF_ROLES_OPT.includes(user.role)) {
       req.optUser = {
-        role:           'admin',
-        theater_id:     user.theater_id || null,
-        isTheaterOwner: Boolean(user.theater_id),
+        role:             user.role,
+        theater_id:       user.theater_id || null,
+        isAdmin:          user.role === 'admin',
+        isTheaterManager: user.role === 'theater-manager',
+        isStaff:          user.role === 'staff',
+        isTheaterOwner:   user.role !== 'admin' && Boolean(user.theater_id),
       };
     }
   } catch { /* token không hợp lệ → bỏ qua */ }
   next();
 };
 
-export { adminMiddleware, theaterAdminMiddleware, requireSuperAdmin, scopeToTheater, optionalAdminAuth };
+export {
+  adminMiddleware,
+  theaterAdminMiddleware,
+  requireSuperAdmin,
+  requireTheaterManager,
+  scopeToTheater,
+  optionalAdminAuth,
+};
 export default authMiddleware;

@@ -17,7 +17,7 @@ const Navbar = () => {
 
   const [isDark, toggleTheme] = useDarkMode();
 
-  const { user, isAdmin, isLoggedIn, logout, openAuthModal } = useAuth();
+  const { user, isAdmin, isStaffRole, isLoggedIn, logout, openAuthModal } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
 
@@ -140,9 +140,9 @@ const Navbar = () => {
                     <span className="hidden lg:block text-sm font-medium text-gray-300 max-w-[100px] truncate">
                       {user.name}
                     </span>
-                    {isAdmin && (
+                    {isStaffRole && (
                       <span className="hidden lg:flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-xs">
-                        <Shield className="w-3 h-3" /> Admin
+                        <Shield className="w-3 h-3" /> {isAdmin ? 'Admin' : 'Staff'}
                       </span>
                     )}
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -170,8 +170,8 @@ const Navbar = () => {
                       <DropdownItem isDark={isDark} icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setDropdownOpen(false); }} />
                       <DropdownItem isDark={isDark} icon={User} label="Hồ sơ cá nhân" onClick={() => { navigate('/profile'); setDropdownOpen(false); }} />
 
-                      {isAdmin && (
-                        <DropdownItem isDark={isDark} icon={Shield} label="Quản trị" accent onClick={() => { navigate('/admin/dashboard'); setDropdownOpen(false); }} />
+                      {isStaffRole && (
+                        <DropdownItem isDark={isDark} icon={Shield} label="Quản trị" accent onClick={() => { navigate('/admin'); setDropdownOpen(false); }} />
                       )}
 
                       <div className={`border-t mt-2 pt-2 ${
@@ -248,7 +248,7 @@ const Navbar = () => {
                       </div>
                     </div>
                     <MobileItem isDark={isDark} icon={TicketCheck} label="Vé đã đặt" onClick={() => { navigate('/my-booking'); setIsOpen(false); }} />
-                    {isAdmin && <MobileItem isDark={isDark} icon={Shield} label="Quản trị" onClick={() => { navigate('/admin'); setIsOpen(false); }} />}
+                    {isStaffRole && <MobileItem isDark={isDark} icon={Shield} label="Quản trị" onClick={() => { navigate('/admin'); setIsOpen(false); }} />}
                     <MobileItem isDark={isDark} icon={LogOut} label="Đăng xuất" danger onClick={() => { handleLogout(); setIsOpen(false); }} />
                   </div>
                 ) : (

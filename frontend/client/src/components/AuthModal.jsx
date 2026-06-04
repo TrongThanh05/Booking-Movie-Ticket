@@ -207,7 +207,7 @@ const RegisterForm = ({ onSuccess }) => {
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 const AuthModal = () => {
-  const { authModalOpen, authModalTab, setAuthModalTab, closeAuthModal, isAdmin } = useAuth();
+  const { authModalOpen, authModalTab, setAuthModalTab, closeAuthModal, isStaffRole } = useAuth();
   const navigate  = useNavigate();
   const overlayRef = useRef(null);
 
@@ -229,11 +229,12 @@ const AuthModal = () => {
 
   const handleSuccess = (user) => {
     closeAuthModal();
-    if (user.role === 'admin') {
-      // Cùng port → cùng app → navigate trực tiếp đến admin dashboard
+    // admin, theater-manager, staff → vào trang quản trị
+    const staffRoles = ['admin', 'theater-manager', 'staff'];
+    if (staffRoles.includes(user.role)) {
       navigate('/admin');
     }
-    // user thường: ở lại trang hiện tại — toast là đủ
+    // user thường: ở lại trang hiện tại
   };
 
   const tab = authModalTab;

@@ -1,18 +1,23 @@
 /**
- * ProtectedRoute.jsx — Admin role guard
- * Redirect to /admin/access-denied nếu không phải admin
+ * ProtectedRoute.jsx — Admin panel route guard
+ *
+ * Phân quyền vào Admin Panel:
+ *   ✅ admin          — toàn quyền
+ *   ✅ theater-manager — quản lý rạp của mình
+ *   ✅ staff          — nhân viên rạp (xem báo cáo, soát vé...)
+ *   ❌ user           — redirect về trang access-denied
  */
 import { Navigate, Outlet } from 'react-router-dom';
-// admin/src/components/ → ../lib/useAuth (re-exports from client AuthContext)
 import { useAuth } from '../lib/useAuth';
 
 const AdminProtectedRoute = () => {
-  const { isLoggedIn, isAdmin } = useAuth();
+  const { isLoggedIn, isStaffRole } = useAuth();
 
   if (!isLoggedIn) {
     return <Navigate to="/" replace />;
   }
-  if (!isAdmin) {
+  // isStaffRole = isAdmin || isTheaterManager || isStaff
+  if (!isStaffRole) {
     return <Navigate to="/admin/access-denied" replace />;
   }
   return <Outlet />;
