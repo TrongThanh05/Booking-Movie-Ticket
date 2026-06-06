@@ -21,6 +21,12 @@ const ShowList = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  // Bộ lọc — rạp và phím
+  const [cinemaId, setCinemaId] = useState('');
+  const [movieId,  setMovieId]  = useState('');
+  const [cinemaOptions, setCinemaOptions] = useState([]);   // [{ _id, name }]
+  const [movieOptions,  setMovieOptions]  = useState([]);   // [{ _id, title }]
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -34,16 +40,29 @@ const ShowList = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Reset page khi filter thay đổi
+  useEffect(() => { setPage(1); }, [cinemaId, movieId]);
+
+  // Load options một lần khi mount
+  useEffect(() => {
+    api.get('/theaters/admin', { params: { limit: 200 } })
+      .then(r => setCinemaOptions(r.data?.data || []))
+      .catch(() => {});
+    api.get('/movies/admin', { params: { limit: 200 } })
+      .then(r => setMovieOptions(r.data?.data || []))
+      .catch(() => {});
+  }, []);
+
   const fetchShows = useCallback(async () => {
     setLoading(true);
     try {
-      // API GET /shows/admin — private endpoint, yêu cầu token admin.
-      //   Super-admin  → tất cả lịch chiếu (pagination + search)
-      //   Cinema Mgr   → chỉ lịch chiếu rạp của mình (scope phía server)
-      //
-      // ⚠️  KHÔNG dùng GET /shows (public) — nó không scope theo token.
       const r = await api.get('/shows/admin', {
-        params: { page, limit, search: searchDebounced },
+        params: {
+          page, limit,
+          search: searchDebounced,
+          cinema_id: cinemaId || undefined,
+          movie_id:  movieId  || undefined,
+        },
       });
       const res = r.data;
       if (res.pagination) {
@@ -57,7 +76,7 @@ const ShowList = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchDebounced]);
+  }, [page, limit, searchDebounced, cinemaId, movieId]);
 
   useEffect(() => { fetchShows(); }, [fetchShows]);
 
@@ -71,7 +90,9 @@ const ShowList = () => {
     <PageBreadCrumb pageTitle="Quản lý Lịch Chiếu" items={[{ label:'Lịch Chiếu' }]}/>
 
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+
+        {/* Thanh tìm kiếm */}
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -79,11 +100,60 @@ const ShowList = () => {
           <input
             type="text" placeholder="Tìm kiếm..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="h-10 w-full sm:w-64 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm
+            className="h-10 w-full sm:w-48 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm
               focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
               dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
           />
         </div>
+
+        {/* Bộ lọc theo rạp */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <select
+            value={cinemaId}
+            onChange={e => setCinemaId(e.target.value)}
+            className="h-10 w-full sm:w-44 rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm appearance-none
+              focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
+              dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
+          >
+            <option value="">Tất cả rạp</option>
+            {cinemaOptions.map(c => (
+              <option key={c._id} value={c._id}>{c.name}</option>
+            ))}
+          </select>
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        {/* Bộ lọc theo phím */}
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+            <line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/>
+            <line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/>
+            <line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>
+          </svg>
+          <select
+            value={movieId}
+            onChange={e => setMovieId(e.target.value)}
+            className="h-10 w-full sm:w-48 rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm appearance-none
+              focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
+              dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
+          >
+            <option value="">Tất cả phím</option>
+            {movieOptions.map(m => (
+              <option key={m._id} value={m._id}>{m.title}</option>
+            ))}
+          </select>
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
         <p className="text-sm text-gray-500 dark:text-gray-400">{pagination.totalItems} suất chiếu</p>
       </div>
 
@@ -120,9 +190,15 @@ const ShowList = () => {
               : shows.map(s => (
                 <Table.Row key={s._id}>
                   <Table.Cell>
-                    <p className="font-semibold text-gray-800 dark:text-white/90 truncate max-w-[150px]">
-                      {s.movie?.title || 'N/A'}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-14 w-10 shrink-0 overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700">
+                        {s.movie?.poster_path && <img src={`/src/assets/images/posters/${s.movie?.poster_path}`} alt="" className="h-full w-full object-cover"/>}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800 dark:text-white/90 truncate max-w-[200px]">{s.movie?.title}</p>
+                        {s.movie?.tagline && <p className="text-xs text-gray-400 italic truncate max-w-[200px]">{s.movie?.tagline}</p>}
+                      </div>
+                    </div>
                   </Table.Cell>
                   <Table.Cell>{s.cinema?.name || '—'}</Table.Cell>
                   <Table.Cell>{s.room_id?.name || '—'}</Table.Cell>

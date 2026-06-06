@@ -61,8 +61,11 @@ router.get('/admin', adminMiddleware, async (req, res) => {
       });
     }
 
-    // ── Super-admin: trả toàn bộ (pagination + search) ────────────────────
-    const result = await paginate(Theater, {}, req.query, {
+    // ── Super-admin: trả toàn bộ (pagination + search + location filter) ──────
+    const locationFilter = req.query.location
+      ? { location: { $regex: `^${req.query.location}$`, $options: 'i' } }
+      : {};
+    const result = await paginate(Theater, locationFilter, req.query, {
       defaultSort: { createdAt: -1 },
       searchFields: ['name', 'location', 'address'],
     });

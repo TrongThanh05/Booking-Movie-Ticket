@@ -128,7 +128,7 @@ const AppSidebar = () => {
         {(isExpanded || isMobileOpen) && (
           <div className="overflow-hidden">
             <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
-              CineAdmin
+              TCineAdmin
             </h1>
             {/* Subtitle thay đổi theo role để Cinema Manager biết rõ phạm vi */}
             <p className="text-[10px] text-gray-400 dark:text-gray-500">

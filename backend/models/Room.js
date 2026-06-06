@@ -122,8 +122,16 @@ export const generateSeats = (layout) => {
 // Pre-save hook: tự động sinh seats[] và capacity nếu chưa có
 // ──────────────────────────────────────────────────────────────────────────────
 roomSchema.pre('save', function (next) {
-  if (this.isModified('layout') || this.seats.length === 0) {
+  // Chỉ regenerate seats khi layout thay đổi VÀ seats chưa có
+  // (tránh ghi đè khi PATCH chỉ cập nhật seats/layout riêng lẻ)
+  if (this.isModified('layout') && this.seats.length === 0) {
     this.seats    = generateSeats(this.layout);
+    this.capacity = this.seats.length;
+  } else if (this.isModified('seats')) {
+    // Khi seats được cập nhật thủ công, chỉ tính lại capacity
+    this.capacity = this.seats.filter(s => s.status === 'active').length
+                  + this.seats.filter(s => s.status !== 'active').length;
+    // = tổng ghế (capacity là tổng, không lọc theo active)
     this.capacity = this.seats.length;
   }
   next();

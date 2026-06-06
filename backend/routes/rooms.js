@@ -159,4 +159,93 @@ router.delete('/:id', adminMiddleware, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/rooms/:id/row-type — Đổi loại ghế của cả 1 hàng
+//
+// Body: { row: "A", type: "vip" | "regular" | "couple" }
+// Cập nhật cả seats[] lẫn layout.row_configs[] cùng lúc
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch('/:id/row-type', adminMiddleware, async (req, res) => {
+  try {
+    const { row, type } = req.body;
+    if (!row || !type) {
+      return res.status(400).json({ message: 'Thiếu tham số row hoặc type' });
+    }
+    const validTypes = ['regular', 'vip', 'couple'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: `type phải là: ${validTypes.join(', ')}` });
+    }
+
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+
+    // Theater-owner scope
+    if (req.isTheaterOwner && room.theater_id.toString() !== req.theaterScope.toString()) {
+      return res.status(403).json({ message: 'Bạn chỉ có quyền chỉnh sửa phòng chiếu của rạp mình' });
+    }
+
+    // Price multiplier tương ứng loại ghế
+    const MULTIPLIER = { regular: 1.0, vip: 1.5, couple: 2.0 };
+    const multiplier = MULTIPLIER[type];
+
+    // Cập nhật tất cả ghế thuộc hàng đó
+    room.seats = room.seats.map((s) =>
+      s.row === row ? { ...s.toObject(), type, price_multiplier: multiplier } : s.toObject()
+    );
+
+    // Cập nhật row_config trong layout
+    if (room.layout?.row_configs) {
+      room.layout.row_configs = room.layout.row_configs.map((rc) =>
+        rc.row === row ? { ...rc.toObject(), type, price_multiplier: multiplier } : rc.toObject()
+      );
+      room.markModified('layout');
+    }
+    room.markModified('seats');
+
+    await room.save({ validateModifiedOnly: true });
+    // Bỏ hook regenerate seats khi chỉ patch (seats đã được set thủ công)
+    res.json({ message: `Đã cập nhật hàng ${row} → ${type}`, seats: room.seats });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PATCH /api/rooms/:id/seat-status — Đổi trạng thái 1 ghế cụ thể
+//
+// Body: { seat_id: "A1", status: "active" | "broken" | "maintenance" }
+// ─────────────────────────────────────────────────────────────────────────────
+router.patch('/:id/seat-status', adminMiddleware, async (req, res) => {
+  try {
+    const { seat_id, status } = req.body;
+    if (!seat_id || !status) {
+      return res.status(400).json({ message: 'Thiếu tham số seat_id hoặc status' });
+    }
+    const validStatuses = ['active', 'broken', 'maintenance'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: `status phải là: ${validStatuses.join(', ')}` });
+    }
+
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+
+    // Theater-owner scope
+    if (req.isTheaterOwner && room.theater_id.toString() !== req.theaterScope.toString()) {
+      return res.status(403).json({ message: 'Bạn chỉ có quyền chỉnh sửa phòng chiếu của rạp mình' });
+    }
+
+    const seatIdx = room.seats.findIndex((s) => s.seat_id === seat_id);
+    if (seatIdx === -1) return res.status(404).json({ message: `Không tìm thấy ghế ${seat_id}` });
+
+    room.seats[seatIdx].status = status;
+    room.markModified('seats');
+    await room.save({ validateModifiedOnly: true });
+
+    res.json({ message: `Ghế ${seat_id} → ${status}`, seat: room.seats[seatIdx] });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
+

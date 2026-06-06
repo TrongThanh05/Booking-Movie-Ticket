@@ -83,15 +83,26 @@ router.get('/', async (req, res) => {
 // ============================================================
 router.get('/admin', adminMiddleware, async (req, res) => {
   try {
-    // Cinema Manager: scope về rạp của mình
-    const baseFilter = (req.isTheaterOwner && req.theaterScope)
-      ? { cinema: req.theaterScope }
-      : {};
+    // ── Build base filter ─────────────────────────────────────────────────
+    const baseFilter = {};
+
+    // Cinema Manager: bắt buộc scope về rạp của mình
+    if (req.isTheaterOwner && req.theaterScope) {
+      baseFilter.cinema = req.theaterScope;
+    } else if (req.query.cinema_id) {
+      // Super-admin: filter theo rạp được chọn (optional)
+      baseFilter.cinema = req.query.cinema_id;
+    }
+
+    // Filter theo phim (cả super-admin và cinema manager đều dùng được)
+    if (req.query.movie_id) {
+      baseFilter.movie = req.query.movie_id;
+    }
 
     const result = await paginate(Show, baseFilter, req.query, {
       defaultSort: { showDateTime: 1 },
       populate: [
-        { path: 'movie',   select: 'title poster_path' },
+        { path: 'movie',   select: 'title poster_path tagline' },
         { path: 'cinema',  select: 'name location' },
         { path: 'room_id', select: 'name screen_type' },
       ],

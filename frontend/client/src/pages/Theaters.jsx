@@ -148,9 +148,9 @@ const Theaters = () => {
                 <h3 className="font-semibold text-red-500 text-lg mb-2">
                   {theater.name}
                 </h3>
-                <p className="text-sm text-gray-400 mb-4 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-green-500" />
-                  {theater.address}
+                <p className="text-sm text-gray-400 mb-4 flex items-start gap-2 ">
+                  <MapPin className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                  <span className="line-clamp-2">{theater.address}</span>
                 </p>
                 <p className="text-sm text-gray-400 mb-4 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-500" />

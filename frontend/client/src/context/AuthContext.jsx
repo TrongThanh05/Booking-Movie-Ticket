@@ -60,6 +60,9 @@ export const AuthProvider = ({ children }) => {
   // isStaffRole: có quyền vào admin panel (3 role trên)
   const isStaffRole = isAdmin || isTheaterManager || isStaff;
 
+  // isSuperAdmin: alias của isAdmin — dùng cho admin components (MovieList, TheaterList, RoomList...)
+  const isSuperAdmin = isAdmin;
+
   // theaterId: chỉ có với theater-manager và staff
   const theaterId = (isTheaterManager || isStaff) ? (user?.theater_id || null) : null;
 
@@ -103,6 +106,7 @@ export const AuthProvider = ({ children }) => {
         user, token,
         isLoggedIn, isAuthenticated,
         isAdmin, isTheaterManager, isStaff, isStaffRole,
+        isSuperAdmin,   // alias isAdmin — dùng trong admin components
         theaterId,
         login, register, logout,
         authModalOpen, authModalTab,

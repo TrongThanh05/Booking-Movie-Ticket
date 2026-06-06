@@ -26,6 +26,8 @@ const TheaterList = () => {
   const [theaters, setTheaters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [location, setLocation] = useState(''); // bộ lọc khu vực
+  const [allLocations, setAllLocations] = useState([]); // danh sách khu vực unique
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -40,32 +42,36 @@ const TheaterList = () => {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const [locationDebounced, setLocationDebounced] = useState('');
+  useEffect(() => {
+    setLocationDebounced(location); setPage(1);
+  }, [location]);
+
   const fetchTheaters = useCallback(async () => {
     setLoading(true);
     try {
-      // API GET /theaters/admin — private endpoint, yêu cầu token admin.
-      //   Super-admin  → trả tất cả rạp (có phân trang + search)
-      //   Cinema Mgr   → trả chỉ rạp của mình (1 item, đã scope phía server)
-      //
-      // ⚠️  KHÔNG dùng GET /theaters (public endpoint) ở đây vì:
-      //   - /theaters không cần token → luôn trả full list
-      //   - Admin cần RBAC scoping → phải dùng /theaters/admin
       const r = await api.get('/theaters/admin', {
-        params: { page, limit, search: searchDebounced },
+        params: { page, limit, search: searchDebounced, location: locationDebounced || undefined },
       });
       const res = r.data;
       if (res.pagination) {
         setTheaters(res.data);
         setPagination(res.pagination);
+        // Cập nhật danh sách khu vực unique (chỉ khi không đang filter)
+        if (!locationDebounced) {
+          const locs = [...new Set(res.data.map(t => t.location).filter(Boolean))].sort();
+          if (locs.length > 0) setAllLocations(prev => [...new Set([...prev, ...locs])]);
+        }
       } else {
-        setTheaters(Array.isArray(res) ? res : res.theaters || []);
+        const arr = Array.isArray(res) ? res : res.theaters || [];
+        setTheaters(arr);
       }
     } catch {
       setTheaters([]);
     } finally {
       setLoading(false);
     }
-  }, [page, limit, searchDebounced]);
+  }, [page, limit, searchDebounced, locationDebounced]);
 
   useEffect(() => { fetchTheaters(); }, [fetchTheaters]);
 
@@ -75,7 +81,8 @@ const TheaterList = () => {
       <PageBreadCrumb pageTitle="Quản lý Cụm Rạp" items={[{ label: 'Cụm Rạp' }]} />
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Thanh tìm kiếm */}
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -85,11 +92,35 @@ const TheaterList = () => {
               placeholder="Tìm kiếm rạp..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="h-10 w-full sm:w-64 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm
+              className="h-10 w-full sm:w-56 rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm
                 focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
                 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
             />
           </div>
+
+          {/* Bộ lọc khu vực */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            <select
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              className="h-10 w-full sm:w-44 rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm appearance-none
+                focus:border-brand-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/10
+                dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:focus:border-brand-500 dark:focus:bg-gray-900 transition-colors"
+            >
+              <option value="">Tất cả khu vực</option>
+              {allLocations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+
           <p className="text-sm text-gray-500 dark:text-gray-400">{pagination.totalItems} cụm rạp</p>
         </div>
 

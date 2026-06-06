@@ -40,7 +40,7 @@ const UserDropdown = () => {
             {user?.name || 'Admin'}
           </p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500">
-            Quản trị viên
+            {user?.role === 'admin' ? 'Quản trị viên' : user?.role === 'theater-manager' ? 'Quản lý rạp' : 'Nhân viên'}
           </p>
         </div>
         {/* Chevron */}
@@ -60,14 +60,6 @@ const UserDropdown = () => {
           </p>
         </div>
 
-        <DropdownItem onClick={() => { setIsOpen(false); }}>
-          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          Hồ sơ cá nhân
-        </DropdownItem>
-
         <Link to="/admin/settings" onClick={() => setIsOpen(false)}>
           <DropdownItem>
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -75,6 +67,15 @@ const UserDropdown = () => {
               <circle cx="12" cy="12" r="3" />
             </svg>
             Cài đặt
+          </DropdownItem>
+        </Link>
+      <Link to="/" onClick={() => setIsOpen(false)}>
+          <DropdownItem>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            Trang chủ
           </DropdownItem>
         </Link>
 
