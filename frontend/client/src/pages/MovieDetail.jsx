@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import { Clock as ClockIcon } from 'lucide-react';
@@ -23,6 +23,33 @@ import { useYouTubePlayer } from '../components/data/useYouTubePlayer';
 import { getMovieById, getMovies, getShowsByMovie, checkFavorite, addFavorite, removeFavoriteByMovie } from '../lib/api';
 import useDarkMode from '../hooks/useDarkMode';
 
+
+/**
+ * Trả về thời gian hiện tại dưới dạng đối tượng Date, tự động cập nhật mỗi phút.
+ * Dùng để ẩn các suất chiếu đã hết giờ mà không cần tải lại trang.
+ */
+const useNow = () => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+};
+
+/** Trả về true khi hai giá trị ngày rơi vào cùng một ngày */
+const isSameDay = (dateA, dateB) => {
+  const a = new Date(dateA);
+  const b = new Date(dateB);
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth()    === b.getMonth()    &&
+    a.getDate()     === b.getDate()
+  );
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
+
 const MovieDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -41,6 +68,9 @@ const MovieDetail = () => {
   const [trailerLoading, setTrailerLoading] = useState(false);
   const [showComingSoonToast, setShowComingSoonToast] = useState(false);
   const trailerControlsTimeout = useRef(null);
+
+  // Thời gian hiện tại — tự động làm mới mỗi phút để lọc thời gian thực
+  const now = useNow();
   const comingSoonToastTimeout = useRef(null);
 
   // Kiểm tra phim sắp chiếu
@@ -81,7 +111,7 @@ const MovieDetail = () => {
     },
   };
 
-  // Auto-hide trailer controls
+  // Ẩn điều khiển trailer tự động
   useEffect(() => {
     if (showTrailerControls && trailerPlaying) {
       trailerControlsTimeout.current = setTimeout(() => {
@@ -98,12 +128,12 @@ const MovieDetail = () => {
     if (trailerControlsTimeout.current) clearTimeout(trailerControlsTimeout.current);
   };
 
-  // Fetch movie data based on ID
+  // Lấy thông tin phim dựa trên ID
   useEffect(() => {
     const fetchMovieData = async () => {
       try {
         setLoading(true);
-        // Fetch current movie
+        // Lấy thông tin phim hiện tại
         const movieResponse = await getMovieById(id);
         setMovie(movieResponse.data);
 
@@ -119,7 +149,7 @@ const MovieDetail = () => {
           }
         }
 
-        // Fetch all movies for related content
+        // Lấy tất cả các bộ phim liên quan
         const allMoviesResponse = await getMovies();
         const allMoviesData = allMoviesResponse.data?.data || allMoviesResponse.data || [];
         const related = allMoviesData
@@ -127,7 +157,7 @@ const MovieDetail = () => {
           .slice(0, 4);
         setRelatedMovies(related);
 
-        // Generate available dates (7 days from today)
+        // Tạo ngày có sẵn (7 ngày kể từ hôm nay)
         const dates = [];
         const today = new Date();
         for (let i = 0; i < 7; i++) {
@@ -220,7 +250,7 @@ const MovieDetail = () => {
     };
   };
 
-  // Fetch real shows by movieId + selectedDate
+  // Lấy các suất chiếu thật theo movieId + ngày đã chọn
   useEffect(() => {
     if (!movie?._id || !selectedDate) return;
     const fetchShows = async () => {
@@ -242,6 +272,14 @@ const MovieDetail = () => {
     };
     fetchShows();
   }, [movie?._id, selectedDate]);
+
+  // Bỏ các suất chiếu đã hết giờ 
+  const filteredShows = useMemo(() => {
+    if (!selectedDate) return shows;
+    const isToday = isSameDay(selectedDate, new Date());
+    if (!isToday) return shows;
+    return shows.filter((show) => new Date(show.showDateTime) > now);
+  }, [shows, selectedDate, now]);
 
   if (loading) {
     return (
@@ -283,7 +321,6 @@ const MovieDetail = () => {
     );
   }
 
-  // shows are now fetched via useEffect above
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-24 pb-12">
@@ -491,21 +528,34 @@ const MovieDetail = () => {
                   <span>Đang tải suất chiếu...</span>
                 </div>
               ) : shows.length === 0 ? (
+                // No shows scheduled for this date at all
                 <div className="py-10 text-center">
                   <Ticket className="w-12 h-12 mx-auto mb-3 text-gray-600" />
                   <p className="text-gray-400 font-medium">Không có suất chiếu cho ngày này.</p>
                   <p className="text-gray-500 text-sm mt-1">Vui lòng chọn ngày khác.</p>
                 </div>
+              ) : filteredShows.length === 0 ? (
+                // Shows existed today but all have already passed
+                <div className="py-10 text-center">
+                  <Ticket className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                  <p className="text-gray-400 font-medium">
+                    Đã hết suất chiếu trong ngày hôm nay.
+                  </p>
+                  <p className="text-gray-500 text-sm mt-1">Vui lòng chọn ngày khác.</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {Object.entries(
-                    shows.reduce((groups, show) => {
+                    // Group filtered shows by cinema — past-time shows are already excluded
+                    filteredShows.reduce((groups, show) => {
                       const key = show.cinema?._id?.toString() || 'unknown';
                       if (!groups[key]) groups[key] = { cinema: show.cinema, items: [] };
                       groups[key].items.push(show);
                       return groups;
                     }, {})
                   ).map(([key, { cinema, items }]) => (
+                    // Cinema blocks with zero remaining shows are never created here
+                    // because filteredShows only contains valid future-time shows
                     <div key={key} className="bg-black/20 rounded-xl border border-white/10 p-4">
                       {/* Cinema header */}
                       <div className="flex items-start gap-2 mb-3">
@@ -515,25 +565,29 @@ const MovieDetail = () => {
                           <p className="text-gray-400 text-xs">{cinema?.location}{cinema?.address ? ` · ${cinema.address}` : ''}</p>
                         </div>
                       </div>
-                      {/* Show buttons */}
+                      {/* Show buttons — sorted ascending by start time */}
                       <div className="flex flex-wrap gap-2">
-                        {items.map((show) => (
-                          <button
-                            key={show._id}
-                            onClick={() => navigate(`/movies/book/${movie._id}/${show._id}`)}
-                            className="flex flex-col items-center px-3 py-2 rounded-lg border bg-green-500/10 border-green-500/40 text-green-300 hover:bg-green-500/25 hover:border-green-400 transition-all duration-200 min-w-[72px]"
-                          >
-                            <span className="font-bold text-sm">
-                              {new Date(show.showDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className="text-[10px] mt-0.5 px-1.5 py-0.5 bg-black/30 rounded-full font-medium">
-                              {show.format}
-                            </span>
-                            <span className="text-[10px] mt-0.5 text-gray-400">
-                              {Math.round(show.base_price / 1000)}K
-                            </span>
-                          </button>
-                        ))}
+                        {items
+                          .slice()
+                          .sort((a, b) => new Date(a.showDateTime) - new Date(b.showDateTime))
+                          .map((show) => (
+                            <button
+                              key={show._id}
+                              onClick={() => navigate(`/movies/book/${movie._id}/${show._id}`)}
+                              className="flex flex-col items-center px-3 py-2 rounded-lg border bg-green-500/10 border-green-500/40 text-green-300 hover:bg-green-500/25 hover:border-green-400 transition-all duration-200 min-w-[72px]"
+                            >
+                              <span className="font-bold text-sm">
+                                {new Date(show.showDateTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className="text-[10px] mt-0.5 px-1.5 py-0.5 bg-black/30 rounded-full font-medium">
+                                {show.format}
+                              </span>
+                              <span className="text-[10px] mt-0.5 text-gray-400">
+                                {Math.round(show.base_price / 1000)}K
+                              </span>
+                            </button>
+                          ))
+                        }
                       </div>
                     </div>
                   ))}

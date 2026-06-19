@@ -123,14 +123,14 @@ const AppSidebar = () => {
       {/* ── Logo ──────────────────────────────────────────────────────────────── */}
       <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 dark:border-gray-800">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white font-bold text-sm">
-          🎬
+          <img className="w-full h-full object-cover" src="assets/images/logo.png" alt="logo" />
         </div>
         {(isExpanded || isMobileOpen) && (
           <div className="overflow-hidden">
             <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
               TCineAdmin
             </h1>
-            {/* Subtitle thay đổi theo role để Cinema Manager biết rõ phạm vi */}
+            {/* Role hiển thị để Cinema Manager biết rõ phạm vi */}
             <p className="text-[10px] text-gray-400 dark:text-gray-500">
               {roleSubtitle}
             </p>
