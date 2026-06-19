@@ -390,17 +390,17 @@ const MovieDetail = () => {
                 )}
                 <button
                   onClick={() => trailerSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className={`px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
+                  className={`cursor-pointer px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
                     isDark
                       ? 'bg-white/10 hover:bg-white/20 text-white'
                       : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
                   }`}
                 >
-                  <Play className="w-5 h-5" /> Xem Trailer
+                  <Play className="w-5 h-5 " /> Xem Trailer
                 </button>
                 <button
                   onClick={toggleFavorite}
-                  className={`px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
+                  className={`cursor-pointer px-6 py-3 rounded-full shadow-md hover:shadow-lg transition-all duration-300 flex items-center gap-2 ${
                     isFavorite
                       ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
                       : isDark
@@ -645,7 +645,7 @@ const MovieDetail = () => {
             {movie.casts.slice(0, 8).map((cast, index) => (
               <div key={index} className="text-center group">
                 <img
-                  src={cast.profile_path}
+                  src={`/src/assets/images/casts/${cast.profile_path}`}
                   alt={cast.name}
                   className="w-24 h-24 object-cover rounded-full mx-auto mb-2 shadow-md group-hover:scale-110 transition-transform duration-300"
                   loading="lazy"

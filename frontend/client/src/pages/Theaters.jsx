@@ -173,12 +173,20 @@ const Theaters = () => {
                     </div>
                   </div>
                 )}
-                <button
-                  onClick={() => navigate(`/releases?theater_id=${theater._id || theater.id}`)}
-                  className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium text-sm shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
-                >
-                  <Ticket className="w-4 h-4" /> Xem Lịch Chiếu
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => navigate(`/theaters/${theater._id || theater.id}`)}
+                    className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium text-sm border border-white/10 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <MapPin className="w-4 h-4" /> Xem Chi Tiết
+                  </button>
+                  <button
+                    onClick={() => navigate(`/releases?theater_id=${theater._id || theater.id}`)}
+                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium text-sm shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <Ticket className="w-4 h-4" /> Xem Lịch Chiếu
+                  </button>
+                </div>
               </div>
             ))}
           </div>

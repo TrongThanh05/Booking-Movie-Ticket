@@ -24,6 +24,7 @@ import MyBooking from './pages/MyBooking';
 import Favorites from './pages/Favorite';
 import Releases from './pages/Releases';
 import Theaters from './pages/Theaters';
+import TheaterDetail from './pages/TheaterDetail';
 import VnpayReturn from './pages/VnpayReturn';
 
 // ── Admin Section (lazy load để giảm bundle size cho user thường) ─────────────
@@ -48,6 +49,7 @@ const App = () => {
           <Route path="/movies" element={<Movies />} />
           <Route path="/movies/:id" element={<MovieDetail />} />
           <Route path="/theaters" element={<Theaters />} />
+          <Route path="/theaters/:id" element={<TheaterDetail />} />
           <Route path="/releases" element={<Releases />} />
 
           {/* Protected — requires login */}
