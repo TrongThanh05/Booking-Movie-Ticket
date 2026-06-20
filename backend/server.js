@@ -44,6 +44,14 @@ const AVATAR_DIR = path.resolve(
 );
 app.use('/avatars', express.static(AVATAR_DIR));
 
+// Serve poster/backdrop/cast tĩnh — GET /images/posters/<f>  /images/backdrops/<f>  /images/cast/<f>
+const POSTER_DIR_STATIC   = path.resolve(__dirname, '../frontend/client/src/assets/images/posters');
+const BACKDROP_DIR_STATIC = path.resolve(__dirname, '../frontend/client/src/assets/images/backdrops');
+const CAST_DIR_STATIC     = path.resolve(__dirname, '../frontend/client/src/assets/images/cast');
+app.use('/images/posters',   express.static(POSTER_DIR_STATIC));
+app.use('/images/backdrops', express.static(BACKDROP_DIR_STATIC));
+app.use('/images/cast',      express.static(CAST_DIR_STATIC));
+
 // Connect to MongoDB
 connectDB().then(() => {
   startCronUnlock(60_000);          // Giải phóng ghế lock hết hạn (mỗi 60s)

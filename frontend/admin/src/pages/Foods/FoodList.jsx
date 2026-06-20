@@ -94,15 +94,12 @@ const FoodList = () => {
 
   return (
     <>
-      <PageMeta title="Quản lý F&B | CineAdmin" description="Quản lý đồ ăn thức uống bán tại rạp" />
-      <PageBreadCrumb pageTitle="Quản lý F&B" items={[{ label: 'F&B' }]} />
+      <PageMeta title="Quản lý đồ ăn & uống | CineAdmin" description="Quản lý đồ ăn thức uống bán tại rạp" />
+      <PageBreadCrumb pageTitle="Quản lý đồ ăn & uống" items={[{ label: 'Đồ ăn & uống' }]} />
 
       {/* ── Header Actions ─────────────────────────────────────────────────── */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-            Thực đơn F&amp;B
-          </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             {displayedFoods.length} món — {displayedFoods.filter(f => f.isActive).length} đang hiển thị
           </p>

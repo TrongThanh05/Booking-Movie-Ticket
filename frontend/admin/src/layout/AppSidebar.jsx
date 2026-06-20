@@ -52,7 +52,7 @@ const buildMenuSections = ({ isAdmin, isTheaterManager, isStaff }) => {
 
   // ── VẬN HÀNH ───────────────────────────────────────────────────────────────
   const opsItems = [
-    { label: 'Đơn hàng / Vé', icon: ListIcon, path: '/admin/bookings' },
+    { label: 'Đơn đặt vé', icon: ListIcon, path: '/admin/bookings' },
     { label: 'Đồ ăn & Uống',  icon: FoodIcon, path: '/admin/foods' },
   ];
 

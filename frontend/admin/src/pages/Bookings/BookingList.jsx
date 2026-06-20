@@ -108,8 +108,8 @@ const BookingList = () => {
 
   return (
     <>
-      <PageMeta title="Đơn hàng / Vé | CineAdmin" />
-      <PageBreadCrumb pageTitle="Quản lý Đơn hàng" items={[{ label: 'Đơn hàng' }]} />
+      <PageMeta title="Đơn đặt vé | CineAdmin" />
+      <PageBreadCrumb pageTitle="Quản lý Đơn đặt vé" items={[{ label: 'Đơn đặt vé' }]} />
 
       {/* ── Stale Booking Warning Banner ──────────────────────────────────── */}
       {staleStats?.stale_count > 0 && (
