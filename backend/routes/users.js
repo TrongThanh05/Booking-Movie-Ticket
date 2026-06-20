@@ -5,6 +5,10 @@ import Booking from '../models/Booking.js';
 import Show    from '../models/Show.js';
 import jwt     from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
+import multer  from 'multer';
+import path    from 'path';
+import fs      from 'fs';
+import { fileURLToPath } from 'url';
 import authMiddleware, {
   adminMiddleware,
   requireSuperAdmin,
@@ -12,6 +16,41 @@ import authMiddleware, {
   optionalAdminAuth,
 } from '../middleware/auth.js';
 import { paginate } from '../utils/paginate.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+// ── Đường dẫn thư mục lưu avatar ──────────────────────────────────────────────
+const AVATAR_DIR = path.resolve(
+  __dirname,
+  '../../frontend/client/src/assets/images/avatars'
+);
+// Tạo thư mục nếu chưa tồn tại
+if (!fs.existsSync(AVATAR_DIR)) fs.mkdirSync(AVATAR_DIR, { recursive: true });
+
+// ── Multer storage: đặt tên file = {username}-avatar.{ext} ───────────────────
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, AVATAR_DIR),
+  filename: (req, file, cb) => {
+    const ext      = path.extname(file.originalname).toLowerCase() || '.jpg';
+    // Lấy name từ DB sau khi đã verify auth; dùng userId làm fallback an toàn
+    const safeName = (req.user?.name || req.params.id)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 40);
+    cb(null, `${safeName}-avatar${ext}`);
+  },
+});
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits:  { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Chỉ chấp nhận file ảnh'), false);
+  },
+});
 
 const router = express.Router();
 
@@ -212,6 +251,58 @@ router.get('/profile/:id', authMiddleware, async (req, res) => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  PUT /api/users/:id/avatar — Upload + cập nhật avatar
+//  Lưu file vào folder avatars, chỉ ghi tên file vào DB
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+router.put(
+  '/:id/avatar',
+  authMiddleware,
+  uploadAvatar.single('avatar'),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'Không có file ảnh được gửi lên' });
+      }
+
+      // Chỉ cho phép user tự cập nhật avatar của chính mình (hoặc admin)
+      if (
+        req.user._id.toString() !== req.params.id &&
+        req.user.role !== 'admin'
+      ) {
+        // Xóa file vừa upload để không rác
+        fs.unlinkSync(req.file.path);
+        return res.status(403).json({ message: 'Không có quyền thực hiện' });
+      }
+
+      const user = await User.findById(req.params.id);
+      if (!user) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+      }
+
+      // Xóa file avatar cũ (nếu có và khác tên mới)
+      if (user.avatar && user.avatar !== req.file.filename) {
+        const oldPath = path.join(AVATAR_DIR, user.avatar);
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      // Chỉ lưu tên file (không phải full path) vào DB
+      user.avatar = req.file.filename;
+      await user.save();
+
+      res.json({
+        message:  'Cập nhật avatar thành công',
+        avatar:   req.file.filename,
+        avatarUrl: `/avatars/${req.file.filename}`,
+      });
+    } catch (error) {
+      // Nếu multer fileFilter reject → error.message
+      res.status(400).json({ message: error.message });
+    }
+  }
+);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //  PUT /api/users/:id — Cập nhật thông tin cơ bản (name, phone) của chính mình
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 router.put('/:id', authMiddleware, async (req, res) => {
@@ -391,6 +482,41 @@ router.put('/:id/reset-password', adminMiddleware, requireSuperAdmin, async (req
       defaultPassword, // trả về để admin thông báo
       role:            targetUser.role,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  PUT /api/users/:id/change-password — Đổi mật khẩu (user tự đổi)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+router.put('/:id/change-password', authMiddleware, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'currentPassword và newPassword là bắt buộc' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự' });
+  }
+  // Chỉ cho phép user tự đổi mật khẩu của chính mình
+  if (req.user._id.toString() !== req.params.id) {
+    return res.status(403).json({ message: 'Không có quyền thực hiện hành động này' });
+  }
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Mật khẩu hiện tại không đúng' });
+    }
+
+    user.password = newPassword; // pre-save hook sẽ tự hash
+    await user.save();
+
+    res.json({ message: 'Đổi mật khẩu thành công' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

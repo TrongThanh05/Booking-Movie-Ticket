@@ -26,6 +26,7 @@ import Releases from './pages/Releases';
 import Theaters from './pages/Theaters';
 import TheaterDetail from './pages/TheaterDetail';
 import VnpayReturn from './pages/VnpayReturn';
+import Profile from './pages/Profile';
 
 // ── Admin Section (lazy load để giảm bundle size cho user thường) ─────────────
 import AdminSection from './admin/AdminSection';
@@ -64,6 +65,10 @@ const App = () => {
           <Route
             path="/favorites"
             element={<PrivateRoute><Favorites /></PrivateRoute>}
+          />
+          <Route
+            path="/profile"
+            element={<PrivateRoute><Profile /></PrivateRoute>}
           />
 
           {/* VNPAY Return URL — public (không cần login, VNPAY redirect trực tiếp) */}

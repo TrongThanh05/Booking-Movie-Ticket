@@ -65,26 +65,26 @@ const Footer = () => {
     {
       title: "Khám phá",
       links: [
-        { name: "Trang chủ", href: "#home" },
-        { name: "Phim mới", href: "#movies" },
-        { name: "Trailer", href: "#trailers" },
-        { name: "Top phim", href: "#trending" }
+        { name: "Trang chủ", href: "/" },
+        { name: "Danh sách phim", href: "/movies" },
+        { name: "Lịch chiếu", href: "/releases" },
+        { name: "Rạp chiếu", href: "/theaters" }
       ]
     },
     {
       title: "Công ty",
       links: [
-        { name: "Về chúng tôi", href: "#about" },
-        { name: "Liên hệ", href: "#contact" },
-        { name: "Tin tức", href: "#news" }
+        { name: "Về chúng tôi", href: "#" },
+        { name: "Liên hệ", href: "#" },
+        { name: "Tin tức", href: "#" }
       ]
     },
     {
       title: "Hỗ trợ",
       links: [
-        { name: "Trợ giúp", href: "#help" },
-        { name: "Chính sách", href: "#privacy" },
-        { name: "Điều khoản", href: "#terms" }
+        { name: "Trợ giúp", href: "#" },
+        { name: "Chính sách", href: "#" },
+        { name: "Điều khoản", href: "#" }
       ]
     }
   ];

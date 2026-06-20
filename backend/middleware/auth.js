@@ -3,15 +3,22 @@ import User     from '../models/User.js';
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * authMiddleware
- * Xác thực JWT, gắn req.userId vào request.
+ * Xác thực JWT, fetch user từ DB, gắn req.userId + req.user vào request.
+ * req.user được gán đầy đủ để các middleware sau (vd: multer filename) có thể
+ * đọc req.user.name, req.user.role, v.v.
  * ───────────────────────────────────────────────────────────────────────────*/
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ message: 'No token provided' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.userId = decoded.id;
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) return res.status(401).json({ message: 'User not found' });
+    if (user.isBanned) return res.status(403).json({ message: 'Tài khoản đã bị khoá' });
+
+    req.userId = user._id;
+    req.user   = user;
     next();
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });

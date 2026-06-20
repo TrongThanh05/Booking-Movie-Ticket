@@ -393,6 +393,67 @@ const MiniCalendar = ({ selectedDate, onSelect, onClose }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// Pagination Component
+// ══════════════════════════════════════════════════════════════════════════════
+
+const MOVIES_PER_PAGE = 4;
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  if (totalPages <= 1) return null;
+
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) pages.push(i);
+
+  return (
+    <div className="flex items-center justify-center gap-2 mt-8 pt-6 border-t border-white/[0.06]">
+      {/* Prev */}
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all duration-200
+          ${
+            currentPage === 1
+              ? 'opacity-30 cursor-not-allowed border-white/5 text-gray-600'
+              : 'border-white/10 text-gray-400 hover:border-white/25 hover:text-white hover:bg-white/5'
+          }`}
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </button>
+
+      {/* Page numbers */}
+      {pages.map((p) => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-semibold border transition-all duration-200
+            ${
+              p === currentPage
+                ? 'bg-gradient-to-b from-red-500 to-red-700 border-red-500 text-white shadow-md shadow-red-500/40'
+                : 'border-white/8 text-gray-400 hover:border-white/20 hover:text-white hover:bg-white/5'
+            }`}
+        >
+          {p}
+        </button>
+      ))}
+
+      {/* Next */}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all duration-200
+          ${
+            currentPage === totalPages
+              ? 'opacity-30 cursor-not-allowed border-white/5 text-gray-600'
+              : 'border-white/10 text-gray-400 hover:border-white/25 hover:text-white hover:bg-white/5'
+          }`}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // Main Page
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -418,6 +479,7 @@ const Releases = () => {
   const [selectedTheater,  setSelectedTheater]  = useState('');
   const [viewMode,         setViewMode]          = useState('grid'); // 'grid' | 'list'
   const [showCalendar,     setShowCalendar]      = useState(false);
+  const [currentPage,      setCurrentPage]       = useState(1);
 
   const [theaters,        setTheaters]        = useState([]);
   const [allShows,        setAllShows]        = useState([]);
@@ -530,6 +592,11 @@ const Releases = () => {
     navigate(`/movies/book/${show.movie?._id || show.movie}/${show._id}`);
   }, [navigate]);
 
+  // ── Reset page whenever filters change ────────────────────────────────────
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDate, selectedLocation, selectedTheater]);
+
   // ── Select date (extended tab or calendar) ─────────────────────────────────
   const handleSelectDate = useCallback((date) => {
     const d = new Date(date);
@@ -547,6 +614,13 @@ const Releases = () => {
   const totalShows = movieGroups.reduce(
     (acc, g) => acc + Object.values(g.theaterGroups).reduce((a, { shows }) => a + shows.length, 0), 0,
   );
+
+  // ── Pagination derived values ───────────────────────────────────────────────
+  const totalPages = Math.ceil(movieGroups.length / MOVIES_PER_PAGE);
+  const paginatedMovies = useMemo(() => {
+    const start = (currentPage - 1) * MOVIES_PER_PAGE;
+    return movieGroups.slice(start, start + MOVIES_PER_PAGE);
+  }, [movieGroups, currentPage]);
 
   // ──────────────────────────────────────────────────────────────────────────
   return (
@@ -838,12 +912,17 @@ const Releases = () => {
               <span className="text-gray-400 font-medium">{movieGroups.length}</span> phim ·{' '}
               <span className="text-gray-400 font-medium">{totalShows}</span> suất chiếu ·{' '}
               <span className="text-gray-400">{selectedDate.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              {totalPages > 1 && (
+                <span className="ml-2 text-gray-600">
+                  · Trang <span className="text-gray-400 font-medium">{currentPage}</span>/{totalPages}
+                </span>
+              )}
             </p>
 
             {/* ── GRID VIEW ── */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {movieGroups.map(({ movie, theaterGroups }) => (
+                {paginatedMovies.map(({ movie, theaterGroups }) => (
                   <MovieGridCard
                     key={movie._id}
                     movie={movie}
@@ -858,7 +937,7 @@ const Releases = () => {
             {/* ── LIST VIEW ── */}
             {viewMode === 'list' && (
               <div className="space-y-3">
-                {movieGroups.map(({ movie, theaterGroups }) => (
+                {paginatedMovies.map(({ movie, theaterGroups }) => (
                   <MovieListRow
                     key={movie._id}
                     movie={movie}
@@ -869,6 +948,13 @@ const Releases = () => {
                 ))}
               </div>
             )}
+
+            {/* ── Pagination ── */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </>
         )}
       </div>

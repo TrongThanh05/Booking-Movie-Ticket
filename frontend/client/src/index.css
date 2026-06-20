@@ -211,6 +211,7 @@
 *{
      font-family: "Outfit", sans-serif;
      scrollbar-width: thin;
+     /* Client dark theme scrollbar — sẽ bị override bởi .admin-scope */
      scrollbar-color: #787777 #1e1e1e;
 }
 
@@ -225,7 +226,21 @@ body{
 .admin-scope {
   color: #101828;
   background-color: #f9fafb;
-  scrollbar-color: auto;
+}
+
+/* Admin scrollbar — light mode: xám nhạt */
+.admin-scope *,
+.admin-scope *::before,
+.admin-scope *::after {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d5dd transparent;
+}
+
+/* Admin scrollbar — dark mode: xám đậm */
+.dark .admin-scope *,
+.dark .admin-scope *::before,
+.dark .admin-scope *::after {
+  scrollbar-color: #344054 transparent;
 }
 
 .admin-scope *,

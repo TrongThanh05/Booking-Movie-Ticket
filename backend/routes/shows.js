@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
     const result = await paginate(Show, {}, req.query, {
       defaultSort: { showDateTime: 1 },
       populate: [
-        { path: 'movie',   select: 'title poster_path' },
+        { path: 'movie',   select: 'title poster_path vote_average runtime genres' },
         { path: 'cinema',  select: 'name location' },
         { path: 'room_id', select: 'name screen_type' },
       ],

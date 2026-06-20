@@ -41,7 +41,9 @@ const isDryRun = args.includes('--dry-run');
 
 const DEFAULT_PWD = {
   admin: 'Admin@123',
-  user:  'User@123',
+  user: 'User@123',
+  // staff: 'Staff@123',
+  // 'theater-manager': 'Theater@123',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

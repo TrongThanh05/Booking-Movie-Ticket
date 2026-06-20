@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
+import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../lib/useAuth';
+import logoDark  from '../assets/logo_dark.png';
+import logoLight from '../assets/logo_light.png';
 import {
   GridIcon,
   VideoIcon,
@@ -79,6 +82,8 @@ const buildMenuSections = ({ isAdmin, isTheaterManager, isStaff }) => {
 const AppSidebar = () => {
   const { isExpanded, isMobileOpen, isMobile, setIsMobileOpen } = useSidebar();
   const { isAdmin, isTheaterManager, isStaff } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const location = useLocation();
   const sidebarRef = useRef(null);
 
@@ -121,22 +126,33 @@ const AppSidebar = () => {
       className={`${sidebarClasses} flex flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900`}
     >
       {/* ── Logo ──────────────────────────────────────────────────────────────── */}
-      <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5 dark:border-gray-800">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-white font-bold text-sm">
-          <img className="w-full h-full object-cover" src="assets/images/logo.png" alt="logo" />
-        </div>
-        {(isExpanded || isMobileOpen) && (
-          <div className="overflow-hidden">
-            <h1 className="text-base font-bold text-gray-900 dark:text-white truncate">
+      {(isExpanded || isMobileOpen) ? (
+        /* Expanded: logo ngang full-width + text bên dưới */
+        <div className="flex flex-col items-start gap-1 border-b border-gray-200 px-4 pt-4 pb-3 dark:border-gray-800">
+          <img
+            className="w-full max-h-10 object-contain object-left"
+            src={isDark ? logoDark : logoLight}
+            alt="tcinebook"
+          />
+          <div>
+            <h1 className="text-sm font-bold text-gray-900 dark:text-white truncate">
               TCineAdmin
             </h1>
-            {/* Role hiển thị để Cinema Manager biết rõ phạm vi */}
             <p className="text-[10px] text-gray-400 dark:text-gray-500">
               {roleSubtitle}
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Collapsed: chỉ hiện logo nhỏ căn giữa */
+        <div className="flex h-16 items-center justify-center border-b border-gray-200 px-2 dark:border-gray-800">
+          <img
+            className="h-8 w-full object-contain"
+            src={isDark ? logoDark : logoLight}
+            alt="tcinebook"
+          />
+        </div>
+      )}
 
       {/* ── Navigation Menu ───────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar py-4 px-3">

@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 // Import routes
 import movieRoutes from './routes/movies.js';
@@ -31,6 +36,13 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve avatar tĩnh — GET /avatars/<filename>
+const AVATAR_DIR = path.resolve(
+  __dirname,
+  '../frontend/client/src/assets/images/avatars'
+);
+app.use('/avatars', express.static(AVATAR_DIR));
 
 // Connect to MongoDB
 connectDB().then(() => {
